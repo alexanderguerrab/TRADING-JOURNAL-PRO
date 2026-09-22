@@ -1,0 +1,1731 @@
+// =====================================================================
+// 🚀 CONFIGURACIÓN DE DESPLIEGUE, FIREBASE Y CLONACIÓN
+// =====================================================================
+
+const CARPETA_REGISTROS_ID = "1HczgEmiLU-4RlyHHyWy0_T27hJddaa65";
+const PLANTILLA_MAESTRA_ID = "1I_Ax7Y7weNQdj_mUrMB1JWlNer7szXzQUm1VuuWXenY";
+const ADMIN_UID = "2N76zyjjPLVWZKbhcopSOnOIbvQ2"; 
+
+function clonarPlantillaParaNuevoUsuario(emailUsuario, uidUsuario) {
+  try {
+    var carpetaDestino = DriveApp.getFolderById(CARPETA_REGISTROS_ID);
+    var archivoPlantilla = DriveApp.getFileById(PLANTILLA_MAESTRA_ID);
+    
+    var nombreNuevaBase = "TRADING JOURNAL PRO - " + emailUsuario;
+    var archivoClonado = archivoPlantilla.makeCopy(nombreNuevaBase, carpetaDestino);
+    
+    // (Opcional) Si quieres darle permisos de edición directos en Google Drive al nuevo usuario
+    // archivoClonado.addEditor(emailUsuario);
+    
+    return { 
+      exito: true, 
+      mensaje: "Base de datos creada exitosamente.",
+      urlArchivo: archivoClonado.getUrl(),
+      idArchivo: archivoClonado.getId()
+    };
+    
+  } catch (error) {
+    return { exito: false, error: error.toString() };
+  }
+}
+
+// =====================================================================
+// 🚀 RESTO DE TUS FUNCIONES ORIGINALES (INTACTAS)
+// =====================================================================
+
+function onOpen() {
+  var ui = SpreadsheetApp.getUi();
+  ui.createMenu('🚀 SISTEMA DE TRADING')
+    .addItem('➕ Nuevo Trade', 'insertarNuevoTrade')
+    .addItem('💵 Nuevo Retiro', 'abrirFormularioRetiro') 
+    .addSeparator()
+    .addItem('📈 Escalar Capital', 'solicitarEscalamientoCapital') 
+    .addItem('🔄 Sincronizar Gráfico', 'sincronizarGraficoExcel') 
+    .addToUi();
+}
+
+// =====================================================================
+// BOTÓN ROJO: RESETEO PROFUNDO QUIRÚRGICO (LIMPIEZA TOTAL CORREGIDA)
+// =====================================================================
+function ejecutarReseteoProfundo(cuentaActiva) {
+  try {
+    var libro = SpreadsheetApp.getActiveSpreadsheet();
+    var hojaConfig = libro.getSheetByName('Configuracion');
+    var hojaCuentas = libro.getSheetByName('Cuentas_DB');
+    var hDash = libro.getSheetByName('DASHBOARD');
+    
+    if (!cuentaActiva) cuentaActiva = hojaConfig.getRange("U1").getValue();
+    if (!cuentaActiva) return { exito: false, error: "No hay cuenta seleccionada para resetear." };
+    
+    var cuentaActivaStr = cuentaActiva.toString().trim().toUpperCase();
+
+    var cuentasReales = hojaCuentas ? hojaCuentas.getRange("A2:A" + Math.max(hojaCuentas.getLastRow(), 2)).getValues().flat().map(function(c) { return c.toString().trim().toUpperCase(); }).filter(String) : [];
+
+    // 1. BASE DE DATOS: Limpieza de Trades (Aniquilación de Fantasmas respetando fórmulas)
+    var hojaBD = libro.getSheetByName('Base de Datos');
+    if (hojaBD) {
+      var maxBD = hojaBD.getLastRow();
+      if (maxBD >= 2) {
+        var datosBD = hojaBD.getRange(2, 1, maxBD - 1, 30).getValues();
+        var formulasW = hojaBD.getRange(2, 23, maxBD - 1, 1).getFormulas();
+        
+        for (var i = 0; i < datosBD.length; i++) {
+          var cuentaTrade = datosBD[i][29] ? datosBD[i][29].toString().trim().toUpperCase() : "";
+          
+          if (cuentaTrade === cuentaActivaStr) { 
+            var fila = i + 2;
+            
+            // 🚀 BARRIDO QUIRÚRGICO: Borramos todo excepto las columnas con fórmulas
+            hojaBD.getRange(fila, 1, 1, 18).clearContent(); // Limpia de la A hasta la R
+            hojaBD.getRange(fila, 20, 1, 3).clearContent(); // Limpia de la T hasta la V
+            
+            if (formulasW[i][0] === "") hojaBD.getRange(fila, 23).clearContent(); // Limpia W si no hay fórmula
+            
+            // 🚀 MATAMOS AL FANTASMA: Limpiamos de la X hasta la AD (7 columnas). Aquí muere el nombre.
+            hojaBD.getRange(fila, 24, 1, 7).clearContent(); 
+            
+            // Restauramos tu fórmula en S (Columna 19)
+            hojaBD.getRange(fila, 19).setFormula('=IF(G' + fila + '="VENTA", N' + fila + '-P' + fila + ', IF(G' + fila + '="COMPRA", P' + fila + '-N' + fila + ', ""))');
+          }
+        }
+      }
+    }
+
+    // 2. RETIROS: Limpieza absoluta (Columna A hasta la H)
+    var hojaRetiros = libro.getSheetByName('Retiros');
+    if (hojaRetiros) {
+      var maxRet = hojaRetiros.getLastRow();
+      if (maxRet >= 2) {
+        var datosRet = hojaRetiros.getRange(2, 1, maxRet - 1, 8).getValues();
+        for (var r = 0; r < datosRet.length; r++) {
+          var cuentaRet = datosRet[r][7] ? datosRet[r][7].toString().trim().toUpperCase() : "";
+          if (cuentaRet === cuentaActivaStr) { 
+            var filaR = r + 2;
+            hojaRetiros.getRange(filaR, 1, 1, 8).clearContent();
+          }
+        }
+      }
+    }
+
+    // 3. HISTORIAL DE ESCALAMIENTO: Aspiradora
+    var datosEsc = hojaConfig.getRange("Q2:T200").getValues();
+    for (var e = 0; e < datosEsc.length; e++) {
+      if (datosEsc[e][0] === "" && datosEsc[e][1] === "" && datosEsc[e][2] === "") continue;
+      
+      var nota = datosEsc[e][2] ? datosEsc[e][2].toString().toUpperCase() : "";
+      var esDeCuentaActiva = (nota.indexOf(cuentaActivaStr) !== -1);
+      var sinEtiqueta = (nota !== "" && nota.indexOf("[") === -1);
+      
+      var esHuerfano = true;
+      if (nota !== "" && nota.indexOf("[") !== -1) {
+        for (var c = 0; c < cuentasReales.length; c++) {
+          if (nota.indexOf(cuentasReales[c]) !== -1) { esHuerfano = false; break; }
+        }
+      } else { esHuerfano = false; }
+
+      if (esDeCuentaActiva || sinEtiqueta || esHuerfano) {
+        hojaConfig.getRange(e + 2, 17, 1, 4).clearContent(); 
+      }
+    }
+
+    // 4. ELIMINACIÓN REAL EN CUENTAS_DB
+    if (hojaCuentas) {
+      var nombresDB = hojaCuentas.getRange("A:A").getValues().map(function(r) { return r[0] ? r[0].toString().trim().toUpperCase() : ""; });
+      var filaDB = nombresDB.indexOf(cuentaActivaStr) + 1;
+      if (filaDB > 1) {
+        hojaCuentas.deleteRow(filaDB); 
+      }
+    }
+
+    // 5. ASPIRADORA EN COLUMNA U DE CONFIGURACIÓN Y DASHBOARD
+    if (hojaConfig) {
+      var maxU = hojaConfig.getLastRow();
+      if (maxU >= 1) {
+        var datosU = hojaConfig.getRange(1, 21, maxU, 1).getValues(); 
+        for (var u = 0; u < datosU.length; u++) {
+          var valU = datosU[u][0] ? datosU[u][0].toString().trim().toUpperCase() : "";
+          if (valU === cuentaActivaStr) {
+            hojaConfig.getRange(u + 1, 21).clearContent(); 
+          }
+        }
+      }
+      hojaConfig.getRange("U1").clearContent(); 
+      
+      // 6. LIMPIEZA VISUAL DE MENÚS Y BROKER
+      hojaConfig.getRange("M4").setValue("SELECCIONE");
+      hojaConfig.getRange("N4").setValue("SELECCIONE");
+      hojaConfig.getRange("P11").clearContent();
+    }
+    if (hDash) hDash.getRange("F18").clearContent();
+
+    // 7. FORZAR VACIADO TOTAL VISUAL EN EXCEL Y DASHBOARD
+    actualizarDesplegablesCuentasExcel(); // Refresca listas
+    if (typeof actualizarSelectorCuentaU1 === "function") actualizarSelectorCuentaU1();
+    if (typeof actualizarCalendarioExcel === "function") actualizarCalendarioExcel(""); 
+    if (typeof actualizarEstadisticasExcel === "function") actualizarEstadisticasExcel(); 
+    if (typeof obtenerDatosDashboard === "function") obtenerDatosDashboard();
+
+    SpreadsheetApp.flush();
+    if (typeof sincronizarGraficoExcel === "function") sincronizarGraficoExcel();
+
+    return { exito: true, mensaje: "¡Cuenta [" + cuentaActiva + "] eliminada y formateada al 100%!" };
+  } catch (error) {
+    return { exito: false, error: error.toString() };
+  }
+}
+
+// =====================================================================
+// ELIMINA EXCLUSIVAMENTE LOS ESCALAMIENTOS CON EXTRACCIÓN DE HUÉRFANOS
+// =====================================================================
+function eliminarEscalamientosExclusivos(cuentaActiva) {
+  try {
+    var libro = SpreadsheetApp.getActiveSpreadsheet();
+    var hojaConfig = libro.getSheetByName('Configuracion');
+    var hojaCuentas = libro.getSheetByName('Cuentas_DB');
+    
+    if (!cuentaActiva) cuentaActiva = hojaConfig.getRange("U1").getValue();
+    if (!cuentaActiva) return { exito: false, error: "No hay cuenta activa seleccionada." };
+    
+    var cuentaActivaStr = cuentaActiva.toString().trim().toUpperCase();
+    var filasBorradas = 0;
+    
+    var cuentasReales = hojaCuentas ? hojaCuentas.getRange("A2:A" + Math.max(hojaCuentas.getLastRow(), 2)).getValues().flat().map(function(c) { return c.toString().trim().toUpperCase(); }).filter(String) : [];
+    var datosEsc = hojaConfig.getRange("Q2:T200").getValues();
+    
+    for (var e = 0; e < datosEsc.length; e++) {
+      if (datosEsc[e][0] === "" && datosEsc[e][1] === "" && datosEsc[e][2] === "") continue;
+      
+      var nota = datosEsc[e][2] ? datosEsc[e][2].toString().toUpperCase() : "";
+      var esDeCuentaActiva = (nota.indexOf(cuentaActivaStr) !== -1);
+      var sinEtiqueta = (nota !== "" && nota.indexOf("[") === -1);
+      
+      var esHuerfano = true;
+      if (nota !== "" && nota.indexOf("[") !== -1) {
+        for (var c = 0; c < cuentasReales.length; c++) {
+          if (nota.indexOf(cuentasReales[c]) !== -1) { esHuerfano = false; break; }
+        }
+      } else { esHuerfano = false; }
+      
+      if (esDeCuentaActiva || sinEtiqueta || esHuerfano) {
+        hojaConfig.getRange(e + 2, 17, 1, 4).clearContent();
+        filasBorradas++;
+      }
+    }
+
+    if (hojaCuentas) {
+      var nombresDB = hojaCuentas.getRange("A:A").getValues().map(function(r) { return r[0] ? r[0].toString().trim().toUpperCase() : ""; });
+      var filaDB = nombresDB.indexOf(cuentaActivaStr) + 1;
+      if (filaDB > 1) {
+        hojaCuentas.getRange(filaDB, 2).setValue(0);
+      }
+    }
+
+    SpreadsheetApp.flush();
+    sincronizarGraficoExcel();
+    return { exito: true, mensaje: "Se barrieron " + filasBorradas + " registros de escalamiento. El capital regresó a $0." };
+  } catch (e) {
+    return { exito: false, error: e.toString() };
+  }
+}
+
+// =====================================================================
+// SISTEMA DE ESCALAMIENTO MIGRADO A CUENTAS_DB (MOTOR BLINDADO)
+// =====================================================================
+function escalarCapital(datosEscala) {
+  try {
+    var libro = SpreadsheetApp.getActiveSpreadsheet();
+    var hojaConfig = libro.getSheetByName('Configuracion');
+    var hojaCuentas = libro.getSheetByName('Cuentas_DB');
+    
+    // 1. TRADUCTOR INTELIGENTE DE NÚMEROS (Anti-errores de tipeo)
+    var montoBruto = datosEscala.monto.toString().trim();
+    var montoLimpio = montoBruto.replace(/[^0-9.,]/g, ''); // Borra $, letras o espacios
+    
+    // Convierte formatos latinos (ej. 1.000,50) a matemáticos (1000.50)
+    if (montoLimpio.indexOf(',') !== -1 && montoLimpio.indexOf('.') !== -1) {
+      if (montoLimpio.indexOf(',') > montoLimpio.indexOf('.')) {
+        montoLimpio = montoLimpio.replace(/\./g, '').replace(',', '.');
+      } else {
+        montoLimpio = montoLimpio.replace(/,/g, '');
+      }
+    } else if (montoLimpio.indexOf(',') !== -1) {
+      montoLimpio = montoLimpio.replace(',', '.');
+    }
+    
+    var montoAñadir = parseFloat(montoLimpio); 
+    if (isNaN(montoAñadir) || montoAñadir <= 0) {
+      return { exito: false, error: "El monto '" + montoBruto + "' es inválido. Ingresa un número limpio (Ej: 1000 o 1000.50)." };
+    }
+
+    // 2. BUSCADOR DE CUENTA ANTI-MAYÚSCULAS/ESPACIOS
+    var cuentaActiva = hojaConfig.getRange("U1").getValue();
+    if (!cuentaActiva) return { exito: false, error: "No hay cuenta activa seleccionada en U1." };
+
+    var cuentaActivaStr = cuentaActiva.toString().trim().toUpperCase();
+
+    // Busca la cuenta ignorando mayúsculas o espacios extra
+    var nombresCuentas = hojaCuentas.getRange("A:A").getValues().map(function(r) { return r[0] ? r[0].toString().trim().toUpperCase() : ""; });
+    var filaCuenta = nombresCuentas.indexOf(cuentaActivaStr);
+    
+    if (filaCuenta === -1) return { exito: false, error: "La cuenta no existe en Cuentas_DB." };
+    filaCuenta += 1; // Ajuste al índice real de la fila en Excel
+
+    // 3. SUMA DEL CAPITAL EN LA BASE DE DATOS
+    var capitalActual = parseFloat(hojaCuentas.getRange(filaCuenta, 2).getValue());
+    if (isNaN(capitalActual)) capitalActual = 0;
+    
+    var nuevoCapitalBase = capitalActual + montoAñadir; 
+    hojaCuentas.getRange(filaCuenta, 2).setValue(nuevoCapitalBase);
+
+    // 4. ESCRITURA EN EL HISTORIAL (Columnas Q a T)
+    var colQ = hojaConfig.getRange("Q:Q").getValues();
+    var filaDestino = 2;
+    for (var i = 1; i < colQ.length; i++) {
+      if (colQ[i][0] === "") { filaDestino = i + 1; break; }
+    }
+
+    var cuentaOriginal = cuentaActiva.toString().trim(); // Para la nota
+    var notaConCuenta = (datosEscala.nota || "Escalado manual") + " [" + cuentaOriginal + "]";
+
+    hojaConfig.getRange(filaDestino, 17).setValue(new Date()).setNumberFormat("dd/MM/yyyy"); 
+    hojaConfig.getRange(filaDestino, 18).setValue(nuevoCapitalBase).setNumberFormat("$#,##0.00"); 
+    hojaConfig.getRange(filaDestino, 19).setValue(notaConCuenta); 
+    hojaConfig.getRange(filaDestino, 20).setValue(montoAñadir).setNumberFormat("$#,##0.00"); 
+
+    // 5. SINCRONIZACIÓN FORZADA
+    SpreadsheetApp.flush(); 
+    sincronizarGraficoExcel(); 
+    
+    return { exito: true, mensaje: "Se han sumado $" + montoAñadir + " a la cuenta " + cuentaOriginal + ".\n\nNuevo capital base: $" + nuevoCapitalBase };
+  } catch (e) {
+    return { exito: false, error: "Fallo interno: " + e.toString() };
+  }
+}
+
+// =====================================================================
+// INSERCIÓN DE FILA CON AUTOMATIZACIÓN DE DÍA (C) Y RECORRIDO (S)
+// =====================================================================
+function insertarNuevoTrade() {
+  var libro = SpreadsheetApp.getActiveSpreadsheet();
+  var hoja = libro.getSheetByName('Base de Datos'); 
+  var hojaConfig = libro.getSheetByName('Configuracion');
+  
+  if (!hoja) {
+    SpreadsheetApp.getUi().alert("Error: No se encontró la pestaña 'Base de Datos'.");
+    return;
+  }
+  
+  hoja.insertRowAfter(1);
+  var ultimaColumnaNum = hoja.getLastColumn();
+  if (ultimaColumnaNum < 30) { ultimaColumnaNum = 30; } 
+  
+  var rangoMolde = hoja.getRange(3, 1, 1, ultimaColumnaNum);
+  var rangoNueva = hoja.getRange(2, 1, 1, ultimaColumnaNum);
+  
+  rangoMolde.copyTo(rangoNueva, SpreadsheetApp.CopyPasteType.PASTE_FORMAT, false);
+  rangoMolde.copyTo(rangoNueva, SpreadsheetApp.CopyPasteType.PASTE_DATA_VALIDATION, false);
+  
+  var nuevoIdNumero = 1; 
+  var idAnterior = hoja.getRange("A3").getValue();
+  var idParseado = parseInt(idAnterior, 10);
+  if (!isNaN(idParseado)) { nuevoIdNumero = idParseado + 1; }
+  var idFormateado = String(nuevoIdNumero).padStart(6, '0'); 
+  hoja.getRange("A2").setNumberFormat("@").setValue(idFormateado);
+  
+  var fechaHoy = new Date();
+  var horaNY = parseInt(Utilities.formatDate(fechaHoy, "America/New_York", "H"), 10);
+  if (horaNY >= 17) { fechaHoy.setDate(fechaHoy.getDate() + 1); }
+  fechaHoy.setHours(0, 0, 0, 0); 
+  
+  hoja.getRange("B2").setValue(fechaHoy).setNumberFormat("dd/MM/yyyy"); 
+  
+  var diasSemana = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+  hoja.getRange("C2").setValue(diasSemana[fechaHoy.getDay()]);
+
+  hoja.getRange("S2").setFormula('=IF(G2="VENTA", N2-P2, IF(G2="COMPRA", P2-N2, ""))');
+
+  var capitalBaseActual = hojaConfig ? parseFloat(hojaConfig.getRange("J2").getValue()) : 100000;
+  if (isNaN(capitalBaseActual) || capitalBaseActual <= 0) capitalBaseActual = 100000;
+  
+  hoja.getRange("X2").setFormula('=W2/' + capitalBaseActual).setNumberFormat("0.00%"); 
+  
+  var cuentaDefecto = hojaConfig ? hojaConfig.getRange("U2").getValue() : "";
+  if (cuentaDefecto) hoja.getRange("AD2").setValue(cuentaDefecto);
+  
+  hoja.getRange("F2").activate();
+}
+
+function obtenerPerfilTrader() {
+  var hoja = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Configuracion");
+  if (!hoja) return { nombre: "Trader", usuario: "Trader Pro", avatar: "" };
+  return {
+    nombre: hoja.getRange("P2").getValue() || "Tu Nombre Aquí",
+    usuario: hoja.getRange("P5").getValue() || "Trader Pro",
+    avatar: hoja.getRange("P8").getValue() || ""
+  };
+}
+
+function doGet() {
+  return HtmlService.createTemplateFromFile('Index').evaluate()
+      .setTitle('Trading Journal Pro')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+}
+
+// =====================================================================
+// OPERATIVA BLINDADA CON REGLA DE TRANSICIÓN HISTÓRICA
+// =====================================================================
+function obtenerOperativa(cuentaActiva) {
+  var hoja = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Base de Datos');
+  var ultimaFila = hoja.getLastRow();
+  if (ultimaFila < 2) return []; 
+  
+  var maxCols = hoja.getLastColumn();
+  if (maxCols < 30) {
+    hoja.insertColumnsAfter(maxCols, 30 - maxCols);
+    hoja.getRange(1, 30).setValue("Cuenta");
+    maxCols = 30;
+  }
+  
+  var datosBrutos = hoja.getRange(2, 1, ultimaFila - 1, 30).getDisplayValues(); 
+  var datosLimpios = [];
+  var cuentaActivaStr = cuentaActiva ? cuentaActiva.toString().trim() : "";
+  
+  for (var i = 0; i < datosBrutos.length; i++) {
+    if (datosBrutos[i][0] && datosBrutos[i][0].toString().trim() !== "") {
+      let cuentaTrade = datosBrutos[i][29] ? datosBrutos[i][29].toString().trim() : "";
+      if (cuentaActivaStr === "" || cuentaTrade === cuentaActivaStr || cuentaTrade === "") {
+        datosLimpios.push(datosBrutos[i]);
+      }
+    }
+  }
+  return datosLimpios;
+}
+
+// =====================================================================
+// MOTOR DE DASHBOARD: CÁLCULO EN MEMORIA Y LECTURA SECUENCIAL BLINDADA
+// =====================================================================
+function obtenerDatosDashboard(cuentaActiva) {
+  try {
+    var libro = SpreadsheetApp.getActiveSpreadsheet();
+    var hDash = libro.getSheetByName("DASHBOARD");
+    var hConfig = libro.getSheetByName("Configuracion");
+    var hBD = libro.getSheetByName("Base de Datos");
+    var hRetiros = libro.getSheetByName("Retiros");
+    
+    if (!hConfig) return null;
+    
+    actualizarDesplegablesCuentasExcel();
+
+    // 🚀 SI LA APP ENVÍA CUENTA: LA ESCRIBIMOS EN U1 (Config) Y EN F18 (Dashboard)
+    if (cuentaActiva !== undefined && cuentaActiva !== "") {
+      hConfig.getRange("U1").setValue(cuentaActiva);
+      if (hDash) hDash.getRange("F18").setValue(cuentaActiva); // 👈 ESPEJO EN F18
+      
+      if (typeof cargarIdentidadDeCuenta === "function") {
+        cargarIdentidadDeCuenta(cuentaActiva);
+      }
+      SpreadsheetApp.flush();
+      
+      try {
+        if (typeof actualizarCalendarioExcel === "function") actualizarCalendarioExcel("");
+        if (typeof actualizarEstadisticasExcel === "function") actualizarEstadisticasExcel();
+      } catch (err) {}
+      
+    } else {
+      cuentaActiva = hConfig.getRange("U1").getValue();
+      if (!cuentaActiva && hDash) {
+        cuentaActiva = hDash.getRange("F18").getValue();
+        if (cuentaActiva) hConfig.getRange("U1").setValue(cuentaActiva);
+      }
+      if (hDash && cuentaActiva) {
+        hDash.getRange("F18").setValue(cuentaActiva);
+      }
+    }
+    
+    SpreadsheetApp.flush(); 
+
+    var cuentaActivaStr = cuentaActiva.toString().trim().toUpperCase();
+    var esCuentaValida = (cuentaActivaStr !== "" && cuentaActivaStr !== "SELECCIONE");
+    
+    var capitalReferencia = parseFloat(hConfig.getRange("J2").getValue()) || 0;
+    
+    var fMoneda = function(num) { 
+      var val = parseFloat(num) || 0;
+      var partes = Math.abs(val).toFixed(2).split(".");
+      partes[0] = partes[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+      return (val < 0 ? "-$" : "$") + partes.join(".");
+    };
+
+    var valorJ5 = parseFloat(hConfig.getRange("J5").getValue()) || 0;
+    var porcentajeJ5 = (valorJ5 < 1 && valorJ5 > 0) ? (valorJ5 * 100).toFixed(2) + "%" : valorJ5.toFixed(2) + "%";
+    var ddDiarioLim = porcentajeJ5 + " (" + fMoneda(parseFloat(hConfig.getRange("J6").getValue()) || 0) + ")";
+
+    var valorJ9 = parseFloat(hConfig.getRange("J9").getValue()) || 0;
+    var porcentajeJ9 = (valorJ9 < 1 && valorJ9 > 0) ? (valorJ9 * 100).toFixed(2) + "%" : valorJ9.toFixed(2) + "%";
+    var ddGenLim = porcentajeJ9 + " (" + fMoneda(parseFloat(hConfig.getRange("J10").getValue()) || 0) + ")";
+    
+    var mercado = hConfig.getRange("M4").getDisplayValue();
+    var tipoCuenta = hConfig.getRange("N4").getDisplayValue();
+    var broker = hConfig.getRange("P11").getDisplayValue();
+
+    var totalRetirado = 0;
+    if (hRetiros && esCuentaValida) {
+      var datosRet = hRetiros.getDataRange().getValues();
+      for (var r = 1; r < datosRet.length; r++) {
+        if (datosRet[r][0] === "") continue; 
+        if (datosRet[r].length > 7) {
+          var ctaRet = datosRet[r][7] ? datosRet[r][7].toString().trim().toUpperCase() : "";
+          if (ctaRet === cuentaActivaStr) {
+            totalRetirado += parseFloat(datosRet[r][2]) || 0; 
+          }
+        }
+      }
+    }
+
+    var sumPnl = 0, sumWins = 0, sumLosses = 0;
+    var sumPnlDiario = 0;
+    var countWins = 0, countLosses = 0, totalTrades = 0;
+    var mayorGanancia = 0, mayorPerdida = 0;
+    
+    var hoy = new Date();
+    var strHoy = hoy.getFullYear() + "-" + hoy.getMonth() + "-" + hoy.getDate();
+
+    if (hBD && esCuentaValida) {
+      var datosBD = hBD.getDataRange().getValues();
+      for (var j = 1; j < datosBD.length; j++) {
+        if (datosBD[j][0] === "") continue; 
+        if (datosBD[j].length > 29) {
+          var ctaBD = datosBD[j][29] ? datosBD[j][29].toString().trim().toUpperCase() : "";
+          if (ctaBD === cuentaActivaStr) {
+            totalTrades++;
+            var pnlVal = datosBD[j][22];
+            var fechaTrade = datosBD[j][1];
+
+            if (pnlVal !== "" && pnlVal !== null) {
+              var pnl = parseFloat(pnlVal);
+              if (!isNaN(pnl)) {
+                sumPnl += pnl;
+                
+                if (fechaTrade instanceof Date) {
+                  var strFecha = fechaTrade.getFullYear() + "-" + fechaTrade.getMonth() + "-" + fechaTrade.getDate();
+                  if (strFecha === strHoy) sumPnlDiario += pnl;
+                }
+
+                if (pnl > 0) {
+                  sumWins += pnl; countWins++;
+                  if (pnl > mayorGanancia) mayorGanancia = pnl;
+                } else if (pnl < 0) {
+                  sumLosses += pnl; countLosses++;
+                  if (pnl < mayorPerdida) mayorPerdida = pnl;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    var balanceActual = capitalReferencia + sumPnl - totalRetirado;
+    if (!esCuentaValida) balanceActual = 0;
+
+    // =====================================================================
+    // 🚀 NUEVO CEREBRO: CÁLCULO DE DRAWDOWN 100% EN VIVO
+    // =====================================================================
+    var ddGenAct = "0.00% ($0.00)";
+    if (capitalReferencia > 0 && sumPnl < 0) {
+      var pctDD = Math.abs(sumPnl / capitalReferencia) * 100;
+      ddGenAct = "-" + pctDD.toFixed(2) + "% (" + fMoneda(sumPnl) + ")";
+    }
+
+    var ddDiarioAct = "0.00% ($0.00)";
+    if (capitalReferencia > 0 && sumPnlDiario < 0) {
+      var pctDia = Math.abs(sumPnlDiario / capitalReferencia) * 100;
+      ddDiarioAct = "-" + pctDia.toFixed(2) + "% (" + fMoneda(sumPnlDiario) + ")";
+    }
+    // =====================================================================
+
+    var winRateNum = totalTrades > 0 ? (countWins / totalTrades) : 0;
+    var profitFactorNum = sumLosses !== 0 ? (sumWins / Math.abs(sumLosses)) : sumWins;
+    var promGanadorNum = countWins > 0 ? (sumWins / countWins) : 0;
+    var promPerdedorNum = countLosses > 0 ? (sumLosses / countLosses) : 0;
+    var rrRealNum = promPerdedorNum !== 0 ? (promGanadorNum / Math.abs(promPerdedorNum)) : 0;
+    var esperanzaNum = totalTrades > 0 ? (sumPnl / totalTrades) : 0;
+    var crecimientoActNum = capitalReferencia > 0 ? ((balanceActual - capitalReferencia) / capitalReferencia) : 0;
+    var crecimientoAcumNum = capitalReferencia > 0 ? ((balanceActual + totalRetirado - capitalReferencia) / capitalReferencia) : 0;
+    
+    if (hDash) {
+      var celdaBalance = hDash.getRange("B3");
+      celdaBalance.setValue(balanceActual).setNumberFormat("$#,##0.00");
+      
+      if (balanceActual >= capitalReferencia && esCuentaValida) {
+        celdaBalance.setBackground("#00ff00"); celdaBalance.setFontColor("#000000");  
+      } else {
+        celdaBalance.setBackground("#ff0000"); celdaBalance.setFontColor("#000000");  
+      }
+
+      hDash.getRange("D3").setValue(sumPnl).setNumberFormat("$#,##0.00");
+      hDash.getRange("F3").setValue(totalTrades).setNumberFormat("#,##0");
+      hDash.getRange("H3").setValue(winRateNum).setNumberFormat("0.00%");
+      hDash.getRange("J3").setValue(profitFactorNum).setNumberFormat("0.00");
+      
+      hDash.getRange("L3").setValue(esCuentaValida ? ddDiarioLim : "--");
+      hDash.getRange("N3").setValue(esCuentaValida ? ddDiarioAct : "--");
+
+      hDash.getRange("B6").setValue(mayorGanancia).setNumberFormat("$#,##0.00");
+      hDash.getRange("D6").setValue(mayorPerdida).setNumberFormat("$#,##0.00");
+      hDash.getRange("F6").setValue(promGanadorNum).setNumberFormat("$#,##0.00");
+      hDash.getRange("H6").setValue(promPerdedorNum).setNumberFormat("$#,##0.00");
+      hDash.getRange("J6").setValue(rrRealNum).setNumberFormat("0.00"); 
+      
+      hDash.getRange("L6").setValue(esCuentaValida ? ddGenLim : "--");
+      hDash.getRange("N6").setValue(esCuentaValida ? ddGenAct : "--");
+
+      hDash.getRange("B9").setValue(mercado);
+      hDash.getRange("D9").setValue(tipoCuenta);
+      hDash.getRange("F9").setValue(broker);
+      hDash.getRange("H9").setValue(esperanzaNum).setNumberFormat("$#,##0.00");
+      hDash.getRange("J9").setValue(totalRetirado).setNumberFormat("$#,##0.00");
+      hDash.getRange("L9").setValue(sumPnl).setNumberFormat("$#,##0.00");
+      hDash.getRange("N9").setValue(crecimientoActNum).setNumberFormat("0.00%");
+      hDash.getRange("N12").setValue(crecimientoAcumNum).setNumberFormat("0.00%");
+      
+      SpreadsheetApp.flush();
+    }
+
+    var fPorc = function(num) { return new Intl.NumberFormat('en-US', { style: 'percent', minimumFractionDigits: 2 }).format(num); };
+    var fDec = function(num) { return num.toFixed(2); };
+
+    return {
+      balance: fMoneda(balanceActual), totalPnl: fMoneda(sumPnl), totalTrades: totalTrades.toString(),
+      winRate: fPorc(winRateNum), profitFactor: fDec(profitFactorNum),
+      ddDiarioLim: esCuentaValida ? ddDiarioLim : "--", ddDiarioAct: esCuentaValida ? ddDiarioAct : "--", 
+      ddGenLim: esCuentaValida ? ddGenLim : "--", ddGenAct: esCuentaValida ? ddGenAct : "--", 
+      mayorGanancia: fMoneda(mayorGanancia), mayorPerdida: fMoneda(mayorPerdida),
+      promGanador: fMoneda(promGanadorNum), promPerdedor: fMoneda(promPerdedorNum), rrReal: fDec(rrRealNum), 
+      mercado: esCuentaValida ? mercado : "--", tipoCuenta: esCuentaValida ? tipoCuenta : "--", broker: esCuentaValida ? broker : "--",
+      esperanza: fMoneda(esperanzaNum), totalRetirado: fMoneda(totalRetirado), gananciaHist: fMoneda(sumPnl),
+      crecimientoActual: fPorc(crecimientoActNum), crecimientoAcumulado: fPorc(crecimientoAcumNum), capitalReferencia: capitalReferencia 
+    };
+  } catch (e) {
+    return null;
+  }
+}
+
+// =====================================================================
+// NUEVO MOTOR: ÚLTIMOS 5 TRADES (ORDEN ID DESCENDENTE Y FECHAS EXACTAS)
+// =====================================================================
+function obtenerUltimos5Trades(cuentaActiva) {
+  var libro = SpreadsheetApp.getActiveSpreadsheet();
+  var hojaBD = libro.getSheetByName("Base de Datos");
+  var hojaDash = libro.getSheetByName("DASHBOARD"); 
+
+  if (!cuentaActiva) {
+    var hojaConfig = libro.getSheetByName("Configuracion");
+    cuentaActiva = hojaConfig ? hojaConfig.getRange("U1").getValue() : "";
+  }
+  
+  var cuentaActivaStr = cuentaActiva ? cuentaActiva.toString().trim().toUpperCase() : "";
+  var ultimaFila = hojaBD.getLastRow();
+  var ultimos5App = [];
+  var top5Puros = []; 
+
+  if (ultimaFila >= 2) {
+    var datosBrutos = hojaBD.getRange(2, 1, ultimaFila - 1, 30).getValues();
+    var tradesValidos = [];
+
+    for (var i = 0; i < datosBrutos.length; i++) {
+      var id = datosBrutos[i][0];
+      if (id && id.toString().trim() !== "") {
+        var cuentaTrade = datosBrutos[i][29] ? datosBrutos[i][29].toString().trim().toUpperCase() : "";
+        var pnl = datosBrutos[i][22]; 
+
+        if ((cuentaActivaStr === "" || cuentaTrade === cuentaActivaStr) && pnl !== "") {
+          tradesValidos.push({
+            id: parseInt(id) || 0,
+            fecha: datosBrutos[i][1],
+            premercado: datosBrutos[i][4], 
+            activo: datosBrutos[i][5],     
+            direccion: datosBrutos[i][6],  
+            temporalidad: datosBrutos[i][8], 
+            porcentaje: datosBrutos[i][23],  
+            resultado: parseFloat(pnl) || 0  
+          });
+        }
+      }
+    }
+
+    tradesValidos.sort(function(a, b) {
+      return b.id - a.id;
+    });
+
+    top5Puros = tradesValidos.slice(0, 5);
+
+    var formatearFecha = function(fObj) {
+      if (!fObj) return "--";
+      if (fObj instanceof Date) {
+        var dia = ("0" + fObj.getDate()).slice(-2);
+        var mes = ("0" + (fObj.getMonth() + 1)).slice(-2);
+        var anio = fObj.getFullYear();
+        return dia + "/" + mes + "/" + anio;
+      }
+      return fObj.toString();
+    };
+
+    var fMoneda = function(num) { 
+      return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num); 
+    };
+
+    for (var k = 0; k < top5Puros.length; k++) {
+      var t = top5Puros[k];
+      ultimos5App.push([
+        formatearFecha(t.fecha),
+        t.premercado,            
+        t.activo,                
+        t.temporalidad,          
+        t.direccion,             
+        t.porcentaje,            
+        fMoneda(t.resultado)     
+      ]);
+    }
+  }
+
+  if (hojaDash) {
+    hojaDash.getRange("D12:D16").clearContent();
+    hojaDash.getRange("F12:F16").clearContent();
+    hojaDash.getRange("H12:H16").clearContent();
+    hojaDash.getRange("J12:J16").clearContent();
+
+    if (top5Puros.length === 0) {
+      hojaDash.getRange("D12").setValue("Sin operaciones");
+    } else {
+      for (var f = 0; f < top5Puros.length; f++) {
+        var filaExcel = 12 + f;
+        hojaDash.getRange("D" + filaExcel).setValue(top5Puros[f].fecha); 
+        hojaDash.getRange("F" + filaExcel).setValue(top5Puros[f].activo);
+        hojaDash.getRange("H" + filaExcel).setValue(top5Puros[f].direccion);
+        hojaDash.getRange("J" + filaExcel).setValue(top5Puros[f].resultado); 
+      }
+      hojaDash.getRange("D12:D16").setNumberFormat("dd/MM/yyyy");
+    }
+    SpreadsheetApp.flush(); 
+  }
+
+  return ultimos5App;
+}
+
+// =====================================================================
+// ⚠️ MOTOR CRONOLÓGICO TOTAL: TRADES + ESCALAMIENTOS + RETIROS
+// =====================================================================
+function obtenerDatosGrafico(cuentaActiva) {
+  var libro = SpreadsheetApp.getActiveSpreadsheet();
+  var hojaBD = libro.getSheetByName("Base de Datos");
+  var hojaConfig = libro.getSheetByName("Configuracion");
+  var hojaCuentas = libro.getSheetByName("Cuentas_DB");
+
+  var cuentaFiltro = cuentaActiva;
+  if (!cuentaFiltro) {
+    cuentaFiltro = hojaConfig ? hojaConfig.getRange("U1").getValue().toString().trim().toUpperCase() : "";
+  } else {
+    cuentaFiltro = cuentaFiltro.toString().trim().toUpperCase();
+  }
+
+  var lineaTemporal = [];
+  var totalInyectado = 0;
+
+  var maxRowConfig = hojaConfig ? hojaConfig.getLastRow() : 0;
+  if (hojaConfig && maxRowConfig >= 2) {
+    var datosEscalado = hojaConfig.getRange("Q2:T" + maxRowConfig).getValues();
+    for (var i = 0; i < datosEscalado.length; i++) {
+      var comentarioEscalado = datosEscalado[i][2] ? datosEscalado[i][2].toString().toUpperCase() : "";
+      var montoNetoE = parseFloat(datosEscalado[i][3]);
+      
+      if (!isNaN(montoNetoE) && montoNetoE > 0) {
+        var perteneceACuenta = false;
+        if (cuentaFiltro === "") {
+          perteneceACuenta = true;
+        } else {
+          perteneceACuenta = (comentarioEscalado.indexOf("[" + cuentaFiltro + "]") !== -1);
+        }
+
+        if (perteneceACuenta) {
+          totalInyectado += montoNetoE;
+          var fechaE = datosEscalado[i][0] instanceof Date ? datosEscalado[i][0] : new Date();
+          lineaTemporal.push({ fecha: fechaE, tipo: 'escalacion', valor: montoNetoE });
+        }
+      }
+    }
+  }
+
+  var hojaRetiros = libro.getSheetByName("Retiros");
+  if (hojaRetiros) {
+    var maxRet = hojaRetiros.getLastRow();
+    if (maxRet >= 2) {
+      var datosRet = hojaRetiros.getRange(2, 1, maxRet - 1, 8).getValues();
+      for (var r = 0; r < datosRet.length; r++) {
+        var cuentaR = datosRet[r][7] ? datosRet[r][7].toString().trim().toUpperCase() : "";
+        var montoR = parseFloat(datosRet[r][2]); 
+        if (!isNaN(montoR) && montoR > 0 && (cuentaFiltro === "" || cuentaR === cuentaFiltro)) {
+          var fechaR = datosRet[r][0] instanceof Date ? datosRet[r][0] : new Date();
+          lineaTemporal.push({ fecha: fechaR, tipo: 'retiro', valor: -montoR });
+        }
+      }
+    }
+  }
+
+  var maxBD = hojaBD.getLastRow();
+  if (maxBD >= 2) {
+    var datosBrutosBD = hojaBD.getRange(2, 1, maxBD - 1, 30).getValues();
+    for (var j = 0; j < datosBrutosBD.length; j++) {
+      var cuentaTrade = datosBrutosBD[j][29] ? datosBrutosBD[j][29].toString().trim().toUpperCase() : "";
+      var gananciaDolares = parseFloat(datosBrutosBD[j][22]); 
+      if (!isNaN(gananciaDolares) && (cuentaFiltro === "" || cuentaTrade === cuentaFiltro)) {
+        var fechaT = datosBrutosBD[j][1] instanceof Date ? datosBrutosBD[j][1] : new Date(0);
+        lineaTemporal.push({ fecha: fechaT, tipo: 'trade', valor: gananciaDolares });
+      }
+    }
+  }
+
+  lineaTemporal.sort(function(a, b) {
+    var timeA = !isNaN(a.fecha.getTime()) ? a.fecha.getTime() : 0;
+    var timeB = !isNaN(b.fecha.getTime()) ? b.fecha.getTime() : 0;
+    return timeA - timeB;
+  });
+
+  var capitalActual = 0;
+  if (hojaCuentas && cuentaFiltro !== "") {
+    var nombresDB = hojaCuentas.getRange("A:A").getValues().map(function(r) { return r[0] ? r[0].toString().trim().toUpperCase() : ""; });
+    var filaDB = nombresDB.indexOf(cuentaFiltro);
+    if (filaDB !== -1) {
+      capitalActual = parseFloat(hojaCuentas.getRange(filaDB + 1, 2).getValue()) || 0;
+    } else {
+      capitalActual = hojaConfig ? parseFloat(hojaConfig.getRange("J2").getValue()) : 0;
+    }
+  } else {
+    capitalActual = hojaConfig ? parseFloat(hojaConfig.getRange("J2").getValue()) : 0;
+  }
+
+  if (isNaN(capitalActual)) capitalActual = 0;
+  var capitalInicialReal = capitalActual - totalInyectado;
+  if (capitalInicialReal < 0) capitalInicialReal = 0;
+
+  var chartData = [];
+  var balanceCorriente = capitalInicialReal;
+  
+  chartData.push(["Inicio", parseFloat(balanceCorriente.toFixed(2))]);
+
+  for (var m = 0; m < lineaTemporal.length; m++) {
+    balanceCorriente += lineaTemporal[m].valor;
+    var fechaStr = Utilities.formatDate(lineaTemporal[m].fecha, Session.getScriptTimeZone(), "dd/MM/yyyy");
+    chartData.push([fechaStr, parseFloat(balanceCorriente.toFixed(2))]);
+  }
+
+  return chartData;
+}
+
+// =====================================================================
+// IMPRESORA DIRECTA: SINCRONIZA EL GRÁFICO (CON RADAR EN M1)
+// =====================================================================
+function sincronizarGraficoExcel() {
+  try {
+    var libro = SpreadsheetApp.getActiveSpreadsheet();
+    var hojaConfig = libro.getSheetByName("Configuracion");
+    if (!hojaConfig) return;
+
+    var cuentaActiva = hojaConfig.getRange("U1").getValue();
+    var datosPerfectos = obtenerDatosGrafico(cuentaActiva);
+
+    if (!datosPerfectos || datosPerfectos.length === 0) {
+      hojaConfig.getRange("M1").setValue("⚠️ Motor sin datos").setBackground("#ffcccc");
+      return;
+    }
+
+    var ultimaFila = hojaConfig.getMaxRows();
+    if (ultimaFila >= 2) {
+      hojaConfig.getRange("K2:L" + ultimaFila).clearContent();
+    }
+
+    hojaConfig.getRange(2, 11, datosPerfectos.length, 2).setValues(datosPerfectos);
+    
+    var horaExacta = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "HH:mm:ss");
+    hojaConfig.getRange("M1").setValue("✅ Sync: " + horaExacta).setBackground("#ccffcc");
+
+  } catch (error) {
+    var hojaConfigError = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Configuracion");
+    if (hojaConfigError) {
+      hojaConfigError.getRange("M1").setValue("🚨 ERROR: " + error.message).setBackground("#ffcccc");
+    }
+  }
+}
+
+function obtenerListasDesplegables() {
+  var hoja = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Configuracion");
+  if (!hoja) return null;
+  return {
+    dias: hoja.getRange("A2:A20").getDisplayValues().flat().filter(String),
+    sesiones: hoja.getRange("B2:B20").getDisplayValues().flat().filter(String),
+    direcciones: hoja.getRange("C2:C20").getDisplayValues().flat().filter(String),
+    activos: hoja.getRange("D2:D50").getDisplayValues().flat().filter(String),
+    ejecuciones: hoja.getRange("E2:E20").getDisplayValues().flat().filter(String),
+    temporalidades: hoja.getRange("F2:F20").getDisplayValues().flat().filter(String),
+    tiposEntrada: hoja.getRange("G2:G50").getDisplayValues().flat().filter(String), 
+    unidades: hoja.getRange("H2:H20").getDisplayValues().flat().filter(String),
+    resultados: hoja.getRange("I2:I50").getDisplayValues().flat().filter(String)    
+  };
+}
+
+// =====================================================================
+// GUARDADO DE TRADES CON AUTOMATIZACIÓN MULTICUENTA Y RECORRIDOS
+// =====================================================================
+function guardarTrade(datos) {
+  try {
+    var libro = SpreadsheetApp.getActiveSpreadsheet();
+    var hoja = libro.getSheetByName('Base de Datos');
+    var hojaConfig = libro.getSheetByName('Configuracion');
+    if (!hoja) return { exito: false, error: "No se encontró la pestaña 'Base de Datos'" };
+
+    var idBuscar = datos.id;
+    var filaDestino = -1;
+
+    if (idBuscar === "SE GENERARÁ AUTO" || idBuscar === "") {
+      hoja.insertRowAfter(1); 
+      var rangoMolde = hoja.getRange(3, 1, 1, 30);
+      var rangoNueva = hoja.getRange(2, 1, 1, 30);
+      rangoMolde.copyTo(rangoNueva, SpreadsheetApp.CopyPasteType.PASTE_FORMAT, false);
+      rangoMolde.copyTo(rangoNueva, SpreadsheetApp.CopyPasteType.PASTE_DATA_VALIDATION, false);
+      
+      var nuevoIdNumero = 1; 
+      var idAnterior = hoja.getRange("A3").getValue();
+      var idParseado = parseInt(idAnterior, 10);
+      if (!isNaN(idParseado)) { nuevoIdNumero = idParseado + 1; }
+      var idFormateado = String(nuevoIdNumero).padStart(6, '0'); 
+      hoja.getRange("A2").setNumberFormat("@").setValue(idFormateado);
+      filaDestino = 2; 
+    } else {
+      var ultimaFila = hoja.getLastRow();
+      if (ultimaFila < 2) return { exito: false, error: "La base de datos está vacía." };
+      var ids = hoja.getRange(2, 1, ultimaFila - 1, 1).getValues();
+      var idEnviadoNum = parseInt(idBuscar, 10); 
+      for (var i = 0; i < ids.length; i++) {
+        if (parseInt(ids[i][0], 10) === idEnviadoNum) { filaDestino = i + 2; break; }
+      }
+      if (filaDestino === -1) return { exito: false, error: "No se encontró el ID." };
+    }
+
+    var fechaProcesada = datos.fecha;
+    if (typeof fechaProcesada === 'string' && fechaProcesada.trim() !== "") {
+      var partesF = fechaProcesada.split(/[-/]/);
+      if (partesF.length >= 3) {
+        if (partesF[0].length === 4) {
+          fechaProcesada = new Date(parseInt(partesF[0], 10), parseInt(partesF[1], 10) - 1, parseInt(partesF[2], 10));
+        } else {
+          fechaProcesada = new Date(parseInt(partesF[2], 10), parseInt(partesF[1], 10) - 1, parseInt(partesF[0], 10));
+        }
+      }
+    } else { fechaProcesada = new Date(); }
+
+    var diasSemana = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+    var nombreDia = diasSemana[fechaProcesada.getDay()];
+
+    var bloque1 = [[
+      fechaProcesada, nombreDia, datos.sesion, datos.premercado, datos.activo,
+      datos.direccion, datos.ejecucion, datos.temporalidad, datos.tipoEntrada,
+      datos.rr, datos.lotaje, datos.unidad, datos.inPrice, datos.inTime,
+      datos.outPrice, datos.outTime, datos.resultado, "",
+      datos.sl, datos.mro, datos.mroUsd
+    ]];
+    hoja.getRange(filaDestino, 2).setNumberFormat("dd/MM/yyyy");
+    hoja.getRange(filaDestino, 2, 1, 21).setValues(bloque1);
+
+    hoja.getRange(filaDestino, 19).setFormula('=IF(G' + filaDestino + '="VENTA", N' + filaDestino + '-P' + filaDestino + ', IF(G' + filaDestino + '="COMPRA", P' + filaDestino + '-N' + filaDestino + ', ""))');
+
+    // =====================================================================
+    // 🚀 NUEVO MOTOR MATEMÁTICO: Limpiador de formato y forzador de negativos
+    // =====================================================================
+    var limpiarNum = function(val) {
+      if (val === null || val === undefined || val === "") return 0;
+      var numLimpio = String(val).replace(/[^0-9.-]+/g, '');
+      var floatNum = parseFloat(numLimpio);
+      if (isNaN(floatNum)) return 0;
+      if (String(val).indexOf('-') !== -1 || String(val).indexOf('(') !== -1) {
+        return -Math.abs(floatNum);
+      }
+      return Math.abs(floatNum);
+    };
+
+    var brutoLimpio = limpiarNum(datos.resBruto);
+    
+    var comLimpia = limpiarNum(datos.comisiones);
+    if (comLimpia > 0) comLimpia = -Math.abs(comLimpia);
+    else if (comLimpia < 0) comLimpia = -Math.abs(comLimpia);
+    
+    var swapLimpio = limpiarNum(datos.swaps);
+    if (swapLimpio > 0) swapLimpio = -Math.abs(swapLimpio);
+    else if (swapLimpio < 0) swapLimpio = -Math.abs(swapLimpio);
+
+    var pnlNeto = brutoLimpio + comLimpia + swapLimpio;
+    var capitalBase = hojaConfig ? (parseFloat(hojaConfig.getRange("J2").getValue()) || 100000) : 100000;
+    // =====================================================================
+
+    hoja.getRange(filaDestino, 23).setValue(pnlNeto).setNumberFormat("$#,##0.00");
+    hoja.getRange(filaDestino, 24).setFormula('=W' + filaDestino + '/' + capitalBase).setNumberFormat("0.00%");
+
+    var bloque2 = [[ datos.link, brutoLimpio, comLimpia, swapLimpio, datos.comentarios ]];
+    hoja.getRange(filaDestino, 25, 1, 5).setValues(bloque2);
+    
+    hoja.getRange(filaDestino, 30).setValue(datos.cuenta || "Sin Cuenta");
+
+    sincronizarGraficoExcel(); 
+    return { exito: true, mensaje: "Trade guardado con éxito." };
+  } catch (e) {
+    return { exito: false, error: e.toString() };
+  }
+}
+
+// =====================================================================
+// RETIROS CON ETIQUETA DE CUENTA
+// =====================================================================
+function guardarNuevoRetiro(datos) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var hoja = ss.getSheetByName('Retiros');
+    if (!hoja) throw new Error('No se encontró la hoja "Retiros"');
+
+    hoja.insertRowBefore(2);
+    var fechaFormateada = datos.fecha ? new Date(datos.fecha + 'T00:00:00') : new Date();
+
+    hoja.getRange(2, 1).setValue(fechaFormateada).setNumberFormat('dd/MM/yyyy'); 
+    hoja.getRange(2, 3).setValue(parseFloat(datos.monto) || 0).setNumberFormat('$#,##0.00'); 
+    hoja.getRange(2, 4).setValue(parseFloat(datos.comision)/100 || 0).setNumberFormat('0.0%'); 
+    hoja.getRange(2, 5).setValue(parseFloat(datos.fee) || 0).setNumberFormat('$#,##0.00'); 
+    hoja.getRange(2, 6).setValue(parseFloat(datos.impuestos) || 0).setNumberFormat('$#,##0.00'); 
+    hoja.getRange(2, 8).setValue(datos.cuenta || "Sin Cuenta"); 
+
+    hoja.getRange(2, 2).setFormula('=Dashboard!$F$9'); 
+    hoja.getRange(2, 7).setFormula('=C2-(C2*D2)-E2-F2').setNumberFormat('$#,##0.00'); 
+
+    sincronizarGraficoExcel(); 
+    return { exito: true };
+  } catch (error) {
+    return { exito: false, mensaje: error.message };
+  }
+}
+
+function obtenerHistorialRetiros(cuentaActiva) {
+  try {
+    var hoja = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Retiros');
+    if (!hoja) return [];
+    var ultimaFila = hoja.getLastRow();
+    if (ultimaFila < 2) return [];
+
+    var maxCols = hoja.getLastColumn();
+    if (maxCols < 8) {
+      hoja.insertColumnsAfter(maxCols, 8 - maxCols);
+      hoja.getRange(1, 8).setValue("Cuenta");
+      maxCols = 8;
+    }
+
+    var datos = hoja.getRange(2, 1, ultimaFila - 1, 8).getDisplayValues();
+    var retirosLimpios = [];
+    var cuentaActivaStr = cuentaActiva ? cuentaActiva.toString().trim() : "";
+
+    for (var i = 0; i < datos.length; i++) {
+      if (datos[i][0] && datos[i][0].toString().trim() !== "") {
+        let cuentaRetiro = datos[i][7] ? datos[i][7].toString().trim() : "";
+        if (cuentaActivaStr === "" || cuentaRetiro === cuentaActivaStr || cuentaRetiro === "") {
+          retirosLimpios.push(datos[i]);
+        }
+      }
+    }
+    return retirosLimpios;
+  } catch (e) {
+    return []; 
+  }
+}
+
+function include(filename) { return HtmlService.createHtmlOutputFromFile(filename).getContent(); }
+
+function abrirFormularioRetiro() {
+  var ui = SpreadsheetApp.getUi();
+  var html = HtmlService.createTemplateFromFile('Index').evaluate().setWidth(1000).setHeight(650);
+  ui.showModalDialog(html, 'Trading Journal Pro');
+}
+
+function solicitarEscalamientoCapital() {
+  var ui = SpreadsheetApp.getUi();
+  var respuesta = ui.prompt('📈 Escalar Capital', 'Ingresa el MONTO NETO EXTRA a sumar (Ej: 1000):', ui.ButtonSet.OK_CANCEL);
+  
+  if (respuesta.getSelectedButton() == ui.Button.OK) {
+    var resultado = escalarCapital({ monto: respuesta.getResponseText(), nota: "Escalado manual desde Excel" });
+    
+    if (resultado.exito) {
+      ui.alert('✅ ¡Éxito!', resultado.mensaje, ui.ButtonSet.OK);
+    } else {
+      ui.alert('❌ Error del Sistema', resultado.error, ui.ButtonSet.OK);
+    }
+  }
+}
+
+function abrirApp() {
+  var html = HtmlService.createTemplateFromFile('Index').evaluate().setWidth(1200).setHeight(700);
+  SpreadsheetApp.getUi().showModalDialog(html, '🔥 Trading Journal Pro');
+}
+
+// =====================================================================
+// LECTURA DE CONFIGURACIÓN REPARADA (EVITA VALORES INDEFINIDOS)
+// =====================================================================
+function obtenerDatosConfiguracion(cuentaEspecifica) {
+  try {
+    var libro = SpreadsheetApp.getActiveSpreadsheet();
+    var hoja = libro.getSheetByName("Configuracion");
+    var hDash = libro.getSheetByName("DASHBOARD");
+    if (!hoja) return null;
+    
+    if (cuentaEspecifica !== undefined && cuentaEspecifica !== "") {
+      hoja.getRange("U1").setValue(cuentaEspecifica);
+      if (hDash) hDash.getRange("F18").setValue(cuentaEspecifica); // 👈 ESPEJO EN F18
+      SpreadsheetApp.flush();
+    }
+
+    var maxRow = hoja.getLastRow();
+    var datosEscalado = hoja.getRange("Q2:T" + Math.max(maxRow, 2)).getDisplayValues();
+    var historialLimpio = [];
+    for (var i = 0; i < datosEscalado.length; i++) {
+      if (datosEscalado[i][0] !== "") {
+        historialLimpio.push({
+          filaExcel: i + 2, fecha: datosEscalado[i][0], monto: datosEscalado[i][1], 
+          comentario: datosEscalado[i][2], montoNeto: datosEscalado[i][3] 
+        });
+      }
+    }
+
+    function obtenerOpcionesDesplegable(celda) {
+      var regla = hoja.getRange(celda).getDataValidation();
+      if (regla && regla.getCriteriaType() == SpreadsheetApp.DataValidationCriteria.VALUE_IN_LIST) {
+        return Array.isArray(regla.getCriteriaValues()[0]) ? regla.getCriteriaValues()[0].filter(String) : [regla.getCriteriaValues()[0]].filter(String);
+      }
+      return []; 
+    }
+
+    var listaMercados = obtenerOpcionesDesplegable("M4");
+    if (listaMercados.length === 0) listaMercados = ["FOREX", "CRIPTO", "INDICES", "CFDS", "ACCIONES", "FUTUROS"];
+
+    var listaTipos = obtenerOpcionesDesplegable("N4");
+    if (listaTipos.length === 0) listaTipos = ["REAL", "DEMO", "FONDEADA", "COMPETENCIA", "PRUEBA"];
+    
+    var hojaCuentas = libro.getSheetByName("Cuentas_DB");
+    var listaCuentas = hojaCuentas ? hojaCuentas.getRange("A2:A" + Math.max(hojaCuentas.getLastRow(), 2)).getDisplayValues().flat().filter(String) : [];
+
+    var fechaRaw = hoja.getRange("P14").getValue();
+    var fechaFormateadaHTML = "";
+    if (fechaRaw instanceof Date && !isNaN(fechaRaw.getTime())) {
+      var yyyy = fechaRaw.getFullYear();
+      var mm = String(fechaRaw.getMonth() + 1).padStart(2, '0');
+      var dd = String(fechaRaw.getDate()).padStart(2, '0');
+      fechaFormateadaHTML = yyyy + "-" + mm + "-" + dd;
+    } else {
+      var displayFecha = hoja.getRange("P14").getDisplayValue();
+      if (displayFecha && displayFecha.indexOf("/") !== -1) {
+        var partes = displayFecha.split("/");
+        if (partes.length === 3) fechaFormateadaHTML = partes[2] + "-" + partes[1] + "-" + partes[0];
+      }
+    }
+
+    var valValcuenta = parseFloat(hoja.getRange("J2").getValue()) || 0;
+    var valDdDiario = parseFloat(hoja.getRange("J5").getValue()) || 0;
+    var valDdGeneral = parseFloat(hoja.getRange("J9").getValue()) || 0;
+
+    if (valDdDiario > 0 && valDdDiario < 1) valDdDiario = valDdDiario * 100;
+    if (valDdGeneral > 0 && valDdGeneral < 1) valDdGeneral = valDdGeneral * 100;
+
+    return {
+      nombre: hoja.getRange("P2").getValue() || "", 
+      usuario: hoja.getRange("P5").getValue() || "",
+      logo: hoja.getRange("P8").getValue() || "", 
+      broker: hoja.getRange("P11").getDisplayValue() || "",
+      cuenta: valValcuenta, 
+      ddDiario: valDdDiario, 
+      ddGeneral: valDdGeneral, 
+      fechaActivacion: fechaFormateadaHTML,
+      mercado: hoja.getRange("M4").getDisplayValue().toString().trim(), 
+      tipoCuenta: hoja.getRange("N4").getDisplayValue().toString().trim(), 
+      opcionesMercado: listaMercados, 
+      opcionesTipoCuenta: listaTipos,                      
+      cuentasDisponibles: listaCuentas, 
+      historialEscalado: historialLimpio
+    };
+  } catch (e) { return null; }
+}
+
+// =====================================================================
+// GUARDADO DE CONFIGURACIÓN (BLINDADO Y CON ESPEJO PERFECTO A M4/N4)
+// =====================================================================
+function guardarDatosConfiguracion(datos) {
+  try {
+    var libro = SpreadsheetApp.getActiveSpreadsheet();
+    var hojaConfig = libro.getSheetByName("Configuracion");
+    var hojaCuentas = libro.getSheetByName("Cuentas_DB");
+    
+    hojaConfig.getRange("P2").setValue(datos.nombre);
+    hojaConfig.getRange("P5").setValue(datos.usuario);
+    hojaConfig.getRange("P8").setValue(datos.logo);
+    
+    var cuentaActiva = hojaConfig.getRange("U1").getValue();
+    if (!cuentaActiva) return { exito: false, error: "No hay ninguna cuenta activa seleccionada." };
+    
+    var cuentaActivaStr = cuentaActiva.toString().trim();
+    var nombresCuentas = hojaCuentas.getRange("A:A").getValues().map(function(r) { return r[0] ? r[0].toString().trim() : ""; });
+    var filaCuenta = nombresCuentas.indexOf(cuentaActivaStr) + 1; 
+    
+    if (filaCuenta > 1) {
+      hojaCuentas.getRange(filaCuenta, 2).setValue(parseFloat(datos.cuenta) || 0); 
+      hojaCuentas.getRange(filaCuenta, 3).setValue(datos.mercado);                
+      hojaCuentas.getRange(filaCuenta, 4).setValue(datos.tipoCuenta);              
+      hojaCuentas.getRange(filaCuenta, 5).setValue(datos.broker);                  
+      hojaCuentas.getRange(filaCuenta, 6).setValue((parseFloat(datos.ddDiario) / 100) || 0);  
+      hojaCuentas.getRange(filaCuenta, 7).setValue((parseFloat(datos.ddGeneral) / 100) || 0);
+      
+      if (datos.fechaActivacion) { 
+        hojaCuentas.getRange(filaCuenta, 8).setValue(new Date(datos.fechaActivacion + "T00:00:00")); 
+      }
+
+      hojaConfig.getRange("M4").clearDataValidations();
+      hojaConfig.getRange("N4").clearDataValidations();
+      
+      hojaConfig.getRange("M4").setValue(datos.mercado ? datos.mercado.toString().trim().toUpperCase() : "");
+      hojaConfig.getRange("N4").setValue(datos.tipoCuenta ? datos.tipoCuenta.toString().trim().toUpperCase() : "");
+      hojaConfig.getRange("P11").setValue(datos.broker ? datos.broker.toString().trim().toUpperCase() : "");
+      
+      var reglaM4 = SpreadsheetApp.newDataValidation().requireValueInList(["FOREX", "CRIPTO", "INDICES", "CFDS", "ACCIONES", "FUTUROS"], true).setAllowInvalid(true).build();
+      var reglaN4 = SpreadsheetApp.newDataValidation().requireValueInList(["REAL", "DEMO", "FONDEADA", "COMPETENCIA", "PRUEBA"], true).setAllowInvalid(true).build();
+      hojaConfig.getRange("M4").setDataValidation(reglaM4);
+      hojaConfig.getRange("N4").setDataValidation(reglaN4);
+      
+      SpreadsheetApp.flush();
+      
+      if (typeof obtenerDatosDashboard === "function") {
+        obtenerDatosDashboard();
+      }
+      
+      // 🚀 Sincronización automática silenciosa añadida
+      if (typeof sincronizarGraficoExcel === "function") sincronizarGraficoExcel();
+
+    } else {
+      return { exito: false, error: "Error de motor: La cuenta activa no existe en Cuentas_DB." };
+    }
+    
+    return { exito: true, mensaje: "¡Configuración actualizada y espejada para la cuenta: " + cuentaActivaStr + "!" };
+  } catch (e) { 
+    return { exito: false, error: e.message }; 
+  }
+}
+
+// =====================================================================
+// CREADOR DE NUEVAS CUENTAS DESDE LA APP
+// =====================================================================
+function agregarNuevaCuenta(nombreCuenta) {
+  try {
+    var libro = SpreadsheetApp.getActiveSpreadsheet();
+    var hojaCuentas = libro.getSheetByName("Cuentas_DB");
+    
+    if (!hojaCuentas) return { exito: false, error: "No se encontró la pestaña Cuentas_DB." };
+    
+    hojaCuentas.appendRow([nombreCuenta.trim(), 0, "", "", "", 0, 0, ""]);
+    
+    actualizarDesplegablesCuentasExcel();
+    
+    return { exito: true, mensaje: "Cuenta '" + nombreCuenta + "' registrada. Capital en $0 y configuraciones limpias." };
+  } catch (e) {
+    return { exito: false, error: e.message };
+  }
+}
+
+function actualizarComentarioEscalado(fila, nuevoComentario) {
+  try {
+    SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Configuracion").getRange(fila, 19).setValue(nuevoComentario); 
+    return { exito: true };
+  } catch (e) { return { exito: false }; }
+}
+
+function obtenerCuentaActivaParaRetiro() {
+  try {
+    var cuenta = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Configuracion").getRange("U1").getValue();
+    return cuenta ? cuenta : "Sin Cuenta";
+  } catch (e) {
+    return "Sin Cuenta";
+  }
+}
+
+// =====================================================================
+// MOTOR 1: ESTADÍSTICAS EN MEMORIA
+// =====================================================================
+function actualizarEstadisticasExcel(cuentaActiva) {
+  try {
+    var libro = SpreadsheetApp.getActiveSpreadsheet();
+    var hEst = libro.getSheetByName("ESTADISTICAS");
+    var hBD = libro.getSheetByName("Base de Datos");
+    var hRet = libro.getSheetByName("Retiros");
+    
+    if (!hEst || !hBD) return;
+
+    var cuentaActivaStr = cuentaActiva ? cuentaActiva.toString().trim().toUpperCase() : "";
+    if (cuentaActivaStr === "") {
+      var hConfig = libro.getSheetByName("Configuracion");
+      if (hConfig) {
+        cuentaActivaStr = hConfig.getRange("U1").getValue().toString().trim().toUpperCase();
+      }
+    }
+
+    var anioSeleccionado = parseInt(hEst.getRange("C2").getValue()) || new Date().getFullYear();
+    
+    var mTrades = [0,0,0,0,0,0,0,0,0,0,0,0];
+    var mWins = [0,0,0,0,0,0,0,0,0,0,0,0];
+    var mLosses = [0,0,0,0,0,0,0,0,0,0,0,0];
+    var mPnl = [0,0,0,0,0,0,0,0,0,0,0,0];
+    var mRetiros = [0,0,0,0,0,0,0,0,0,0,0,0];
+
+    var datosBD = hBD.getDataRange().getValues();
+    for (var i = 1; i < datosBD.length; i++) {
+      var fechaObj = datosBD[i][1]; 
+      if (fechaObj instanceof Date && fechaObj.getFullYear() === anioSeleccionado) {
+        var ctaBD = datosBD[i][29] ? datosBD[i][29].toString().trim().toUpperCase() : "";
+        if (cuentaActivaStr === "" || ctaBD === cuentaActivaStr) {
+          var mesIndex = fechaObj.getMonth();
+          var pnl = datosBD[i][22]; 
+          
+          if (pnl !== "" && pnl !== null && !isNaN(parseFloat(pnl))) {
+            pnl = parseFloat(pnl);
+            mTrades[mesIndex]++;
+            mPnl[mesIndex] += pnl;
+            if (pnl > 0) mWins[mesIndex]++;
+            else if (pnl < 0) mLosses[mesIndex]++;
+          }
+        }
+      }
+    }
+
+    if (hRet) {
+      var datosRet = hRet.getDataRange().getValues();
+      for (var r = 1; r < datosRet.length; r++) {
+        var fechaRet = datosRet[r][0]; 
+        if (fechaRet instanceof Date && fechaRet.getFullYear() === anioSeleccionado) {
+          var ctaRet = datosRet[r][7] ? datosRet[r][7].toString().trim().toUpperCase() : "";
+          if (cuentaActivaStr === "" || ctaRet === cuentaActivaStr) {
+            var mesRetIndex = fechaRet.getMonth();
+            mRetiros[mesRetIndex] += parseFloat(datosRet[r][6]) || 0; 
+          }
+        }
+      }
+    }
+
+    var matrizMensual = [];
+    var matrizSparklines = [];
+    var tTrades = 0, tWins = 0, tLosses = 0, tPnl = 0, tRetiros = 0;
+
+    for (var m = 0; m < 12; m++) {
+      var wr = mTrades[m] > 0 ? (mWins[m] / mTrades[m]) : 0;
+      matrizMensual.push([ mTrades[m], mWins[m], mLosses[m], wr, mPnl[m], mRetiros[m] ]);
+      matrizSparklines.push(['=IF(C' + (6+m) + '=0, "", SPARKLINE(F' + (6+m) + ', {"charttype", "bar"; "max", 1; "color1", "#00b050"}))']);
+      
+      tTrades += mTrades[m];
+      tWins += mWins[m];
+      tLosses += mLosses[m];
+      tPnl += mPnl[m];
+      tRetiros += mRetiros[m];
+    }
+
+    hEst.getRange("C6:H17").setValues(matrizMensual);
+    hEst.getRange("F6:F17").setNumberFormat("0.00%");
+    hEst.getRange("G6:H17").setNumberFormat("$#,##0.00");
+    hEst.getRange("I6:I17").setFormulas(matrizSparklines);
+
+    var tWr = tTrades > 0 ? (tWins / tTrades) : 0;
+    hEst.getRange("C18:H18").setValues([[ tTrades, tWins, tLosses, tWr, tPnl, tRetiros ]]);
+    hEst.getRange("F18").setNumberFormat("0.00%");
+    hEst.getRange("G18:H18").setNumberFormat("$#,##0.00");
+
+    hEst.getRange("J6").setFormula('=SUMIF(B6:B17, "*"&TRIM(K2)&"*", D6:D17)'); 
+    hEst.getRange("K6").setFormula('=SUMIF(B6:B17, "*"&TRIM(K2)&"*", E6:E17)'); 
+    
+    hEst.getRange("J9").setValue(tPnl).setNumberFormat("$#,##0.00");
+    hEst.getRange("J14").setValue(tRetiros).setNumberFormat("$#,##0.00");
+
+    SpreadsheetApp.flush();
+    
+  } catch (error) {
+    SpreadsheetApp.getActiveSpreadsheet().toast("Error de motor: " + error.toString(), "Alerta 🚨", 8);
+  }
+}
+
+// =====================================================================
+// MOTOR 2: CALENDARIO EN MEMORIA
+// =====================================================================
+function actualizarCalendarioExcel(cuentaActiva) {
+  try {
+    var libro = SpreadsheetApp.getActiveSpreadsheet();
+    var hCal = libro.getSheetByName("CALENDARIO");
+    var hBD = libro.getSheetByName("Base de Datos");
+    
+    if (!hCal || !hBD) return;
+
+    var cuentaActivaStr = cuentaActiva ? cuentaActiva.toString().trim().toUpperCase() : "";
+    if (cuentaActivaStr === "") {
+      var hConfig = libro.getSheetByName("Configuracion");
+      if (hConfig) {
+        cuentaActivaStr = hConfig.getRange("U1").getValue().toString().trim().toUpperCase();
+      }
+    }
+    
+    var anio = parseInt(hCal.getRange("G2").getValue()) || new Date().getFullYear();
+    
+    var valD2Disp = hCal.getRange("D2").getDisplayValue().toString().toUpperCase().trim();
+    var valD2Limpio = valD2Disp.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    var mesIndex = 0;
+    
+    if (valD2Limpio.indexOf("ENE") > -1 || valD2Limpio.indexOf("JAN") > -1) mesIndex = 0;
+    else if (valD2Limpio.indexOf("FEB") > -1) mesIndex = 1;
+    else if (valD2Limpio.indexOf("MAR") > -1) mesIndex = 2;
+    else if (valD2Limpio.indexOf("ABR") > -1 || valD2Limpio.indexOf("APR") > -1) mesIndex = 3;
+    else if (valD2Limpio.indexOf("MAY") > -1) mesIndex = 4;
+    else if (valD2Limpio.indexOf("JUN") > -1) mesIndex = 5;
+    else if (valD2Limpio.indexOf("JUL") > -1) mesIndex = 6;
+    else if (valD2Limpio.indexOf("AGO") > -1 || valD2Limpio.indexOf("AUG") > -1) mesIndex = 7;
+    else if (valD2Limpio.indexOf("SEP") > -1 || valD2Limpio.indexOf("SET") > -1) mesIndex = 8;
+    else if (valD2Limpio.indexOf("OCT") > -1) mesIndex = 9;
+    else if (valD2Limpio.indexOf("NOV") > -1) mesIndex = 10;
+    else if (valD2Limpio.indexOf("DIC") > -1 || valD2Limpio.indexOf("DEC") > -1) mesIndex = 11;
+
+    var datosBD = hBD.getDataRange().getValues();
+    var resumenDias = {}; 
+
+    for (var j = 1; j < datosBD.length; j++) {
+      var fbd = datosBD[j][1];
+      if (fbd instanceof Date) {
+        var ctaBD = datosBD[j][29] ? datosBD[j][29].toString().trim().toUpperCase() : "";
+        if (cuentaActivaStr === "" || ctaBD === cuentaActivaStr) {
+          var pnl = datosBD[j][22];
+          if (pnl !== "" && pnl !== null && !isNaN(parseFloat(pnl))) {
+            pnl = parseFloat(pnl);
+            var clave = fbd.getFullYear() + "-" + fbd.getMonth() + "-" + fbd.getDate();
+            if (!resumenDias[clave]) resumenDias[clave] = { wins: 0, losses: 0, pnlTotal: 0 };
+            
+            resumenDias[clave].pnlTotal += pnl;
+            if (pnl > 0) resumenDias[clave].wins++;
+            else if (pnl < 0) resumenDias[clave].losses++;
+          }
+        }
+      }
+    }
+
+    var primerDiaMes = new Date(anio, mesIndex, 1, 12, 0, 0); 
+    var diaSemana = primerDiaMes.getDay(); 
+    var offset = diaSemana === 0 ? 6 : diaSemana - 1; 
+    var fechaActual = new Date(anio, mesIndex, 1 - offset, 12, 0, 0);
+    
+    var mValues = [], mBg = [], mFont = [], mFormat = [];
+
+    var colVerde = "#00ff00";
+    var colRojo = "#ff0000";
+    var colDorado = "#C7940D"; 
+    var colGris = "#999999";   
+    var colBlanco = "#ffffff"; 
+    var colAmarillo = "#ffff00";
+    
+    for (var semana = 0; semana < 6; semana++) {
+      var rValDate = [], rValWin = [], rValLoss = [], rValPnl = [];
+      var rBgDate = [], rBgWin = [], rBgLoss = [], rBgPnl = [];
+      var rFmtDate = [], rFmtWin = [], rFmtLoss = [], rFmtPnl = [];
+      var rFntDate = [], rFntWin = [], rFntLoss = [], rFntPnl = [];
+
+      for (var d = 0; d < 7; d++) {
+        var fechaCelda = new Date(fechaActual);
+        var esMesActual = (fechaCelda.getMonth() === mesIndex);
+        var esFinSemana = (d === 5 || d === 6); 
+        
+        var fondoBase = esMesActual ? (esFinSemana ? colGris : colBlanco) : colDorado;
+
+        rValDate.push(fechaCelda);
+        rFmtDate.push("dd"); 
+        rBgDate.push(esMesActual ? colAmarillo : colDorado);
+        rFntDate.push("#000000");
+
+        var valWins = "", valLosses = "", valPnl = "";
+        if (esMesActual) {
+          var clave = fechaCelda.getFullYear() + "-" + fechaCelda.getMonth() + "-" + fechaCelda.getDate();
+          var stats = resumenDias[clave];
+          if (stats && (stats.wins > 0 || stats.losses > 0)) {
+            valWins = stats.wins > 0 ? stats.wins : "";
+            valLosses = stats.losses > 0 ? stats.losses : "";
+            valPnl = stats.pnlTotal;
+          }
+        }
+
+        rValWin.push(valWins);
+        rFmtWin.push("0"); 
+        rBgWin.push(valWins !== "" ? colVerde : fondoBase);
+        rFntWin.push("#000000");
+
+        rValLoss.push(valLosses);
+        rFmtLoss.push("0");
+        rBgLoss.push(valLosses !== "" ? colRojo : fondoBase); 
+        rFntLoss.push(valLosses !== "" ? "#ffffff" : "#000000");
+
+        rValPnl.push(valPnl !== "" ? valPnl : "");
+        rFmtPnl.push(valPnl !== "" ? "$#,##0.00" : "@"); 
+        
+        var bgPnl = fondoBase;
+        var fntPnl = "#000000";
+        
+        if (valPnl !== "") {
+          if (valPnl > 0) {
+            bgPnl = colVerde;
+            fntPnl = "#000000";
+          } else if (valPnl < 0) {
+            bgPnl = colRojo;
+            fntPnl = "#ffffff";
+          }
+        }
+        rBgPnl.push(bgPnl);
+        rFntPnl.push(fntPnl);
+
+        fechaActual.setDate(fechaActual.getDate() + 1);
+      }
+
+      mValues.push(rValDate, rValWin, rValLoss, rValPnl);
+      mBg.push(rBgDate, rBgWin, rBgLoss, rBgPnl);
+      mFormat.push(rFmtDate, rFmtWin, rFmtLoss, rFmtPnl);
+      mFont.push(rFntDate, rFntWin, rFntLoss, rFntPnl);
+    }
+    
+    var gridRange = hCal.getRange(4, 2, 24, 7); 
+    gridRange.setValues(mValues);
+    gridRange.setBackgrounds(mBg);
+    gridRange.setFontColors(mFont);
+    gridRange.setNumberFormats(mFormat);
+    
+    SpreadsheetApp.flush();
+    
+  } catch (error) {
+    SpreadsheetApp.getActiveSpreadsheet().toast("Error Calendario: " + error.toString(), "Alerta 🚨", 8);
+  }
+}
+
+// =====================================================================
+// MOTOR DE IDENTIDAD (CARGA EL ADN COMPLETO DE LA CUENTA SELECCIONADA)
+// =====================================================================
+function cargarIdentidadDeCuenta(cuentaActiva) {
+  try {
+    var libro = SpreadsheetApp.getActiveSpreadsheet();
+    var hConfig = libro.getSheetByName("Configuracion");
+    var hCuentas = libro.getSheetByName("Cuentas_DB");
+    
+    if (!hConfig || !hCuentas || !cuentaActiva) return;
+    
+    var cuentaActivaStr = cuentaActiva.toString().trim().toUpperCase();
+    var datosDB = hCuentas.getDataRange().getValues();
+    
+    for (var i = 1; i < datosDB.length; i++) {
+      var nombreFila = datosDB[i][0] ? datosDB[i][0].toString().trim().toUpperCase() : "";
+      
+      if (nombreFila === cuentaActivaStr) {
+        hConfig.getRange("J2").setValue(parseFloat(datosDB[i][1]) || 0);               // Capital Base
+        hConfig.getRange("M4").setValue(datosDB[i][2] || "SELECCIONE");               // Mercado
+        hConfig.getRange("N4").setValue(datosDB[i][3] || "SELECCIONE");               // Tipo de Cuenta
+        hConfig.getRange("P11").setValue(datosDB[i][4] || "");                         // Broker/Empresa
+        hConfig.getRange("J5").setValue(parseFloat(datosDB[i][5]) || 0);               // Límite DD Diario
+        hConfig.getRange("J9").setValue(parseFloat(datosDB[i][6]) || 0);               // Límite DD General
+        
+        if (datosDB[i][7]) {
+          var fecha = new Date(datosDB[i][7]);
+          if (!isNaN(fecha.getTime())) {
+            hConfig.getRange("P14").setValue(fecha);
+          } else {
+            hConfig.getRange("P14").clearContent();
+          }
+        } else {
+          hConfig.getRange("P14").clearContent();
+        }
+        
+        SpreadsheetApp.flush();
+        return; 
+      }
+    }
+  } catch (error) { 
+    Logger.log("Error al cargar identidad de la cuenta: " + error.toString()); 
+  }
+}
+
+// =====================================================================
+// RADAR AUTOMÁTICO DE CAMBIOS EN EXCEL (ESCUCHA TODO EL SISTEMA)
+// =====================================================================
+function onEdit(e) {
+  if (!e || !e.range) return;
+  var hoja = e.source.getActiveSheet();
+  var nombreHojaOriginal = hoja.getName();
+  var nombreHoja = nombreHojaOriginal.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  var celdaEditada = e.range.getA1Notation().toUpperCase();
+  var fila = e.range.getRow();
+  var col = e.range.getColumn();
+
+  var celdaSelectorDashboard = "F18"; 
+
+  // 🚀 ESCENARIO 1: Si cambias la cuenta en Configuración (U1) o en el Dashboard (F18)
+  if ((nombreHoja === "CONFIGURACION" && celdaEditada === "U1") || 
+      (nombreHoja === "DASHBOARD" && celdaEditada === celdaSelectorDashboard)) {
+    
+    var cuentaSeleccionada = e.value; 
+    var hConfig = e.source.getSheetByName("Configuracion");
+    var hDash = e.source.getSheetByName("DASHBOARD");
+
+    if (nombreHoja === "DASHBOARD" && hConfig) {
+      hConfig.getRange("U1").setValue(cuentaSeleccionada);
+    } else if (nombreHoja === "CONFIGURACION" && hDash) {
+      hDash.getRange(celdaSelectorDashboard).setValue(cuentaSeleccionada);
+    }
+    
+    if (typeof cargarIdentidadDeCuenta === "function") cargarIdentidadDeCuenta(cuentaSeleccionada); 
+    if (typeof obtenerDatosDashboard === "function") obtenerDatosDashboard(cuentaSeleccionada);
+    if (typeof actualizarCalendarioExcel === "function") actualizarCalendarioExcel(""); 
+    if (typeof actualizarEstadisticasExcel === "function") actualizarEstadisticasExcel();
+    
+    e.source.toast("Cuenta cambiada a: " + cuentaSeleccionada, "Sincronización 🔄", 3);
+  }
+
+  // 🚀 ESCENARIO 2: Si escribes un nuevo trade en la Base de Datos
+  if (nombreHoja === "BASE DE DATOS") {
+    if (fila >= 2) {
+      if (typeof obtenerDatosDashboard === "function") obtenerDatosDashboard();
+      if (typeof actualizarCalendarioExcel === "function") actualizarCalendarioExcel(""); 
+      if (typeof actualizarEstadisticasExcel === "function") actualizarEstadisticasExcel();
+      
+      e.source.toast("Estadísticas y Calendario recalculados.", "Nuevo Trade Detectado 📈", 2);
+    }
+  }
+
+  // 🚀 ESCENARIO 3 (RECUPERADO): Si cambias el Mes (D2) o Año (G2) en la hoja CALENDARIO
+  if (nombreHoja === "CALENDARIO" && fila === 2 && (col === 4 || col === 7)) {
+    if (typeof actualizarCalendarioExcel === "function") {
+      actualizarCalendarioExcel(""); 
+    }
+  }
+
+  // 🚀 ESCENARIO 4 (RECUPERADO): Si cambias el Año (C2) en la hoja ESTADISTICAS
+  if (nombreHoja === "ESTADISTICAS" && fila === 2 && col === 3) {
+    if (typeof actualizarEstadisticasExcel === "function") {
+      actualizarEstadisticasExcel("");
+    }
+  }
+}
+
+// =====================================================================
+// BARRIDO NUCLEAR MANUAL DIRECTO (SALTA LA WEB APP)
+// =====================================================================
+function LIMPIAR_TRADES_MANUAL() {
+  var libro = SpreadsheetApp.getActiveSpreadsheet();
+  var hojaBD = libro.getSheetByName("Base de Datos");
+  var hojaConfig = libro.getSheetByName("Configuracion");
+  
+  var cuenta = hojaConfig.getRange("U1").getValue().toString().trim().toUpperCase();
+  
+  if(cuenta === "" || cuenta === "SELECCIONE") {
+    SpreadsheetApp.getUi().alert("⚠️ ERROR: Primero selecciona o escribe el nombre de la cuenta en la celda U1.");
+    return;
+  }
+
+  var datos = hojaBD.getRange("A2:AD").getValues();
+  var borrados = 0;
+
+  for (var i = 0; i < datos.length; i++) {
+    var nombreColumnaAD = datos[i][29] ? datos[i][29].toString().trim().toUpperCase() : "";
+
+    if (nombreColumnaAD === cuenta) {
+      var fila = i + 2;
+      
+      hojaBD.getRange(fila, 1, 1, 18).clearContent(); 
+      hojaBD.getRange(fila, 20, 1, 3).clearContent(); 
+      hojaBD.getRange(fila, 24, 1, 7).clearContent(); 
+      
+      hojaBD.getRange(fila, 19).setFormula('=IF(G' + fila + '="VENTA", N' + fila + '-P' + fila + ', IF(G' + fila + '="COMPRA", P' + fila + '-N' + fila + ', ""))');
+      
+      borrados++;
+    }
+  }
+
+  if (typeof obtenerDatosDashboard === "function") obtenerDatosDashboard();
+
+  SpreadsheetApp.flush();
+  
+  SpreadsheetApp.getUi().alert("✅ BARRIDO COMPLETADO.\n\nSe fulminaron exactamente " + borrados + " trades fantasmas de la cuenta: [" + cuenta + "].");
+}
+
+// =====================================================================
+// AUTOSINCRONIZACIÓN DE DESPLEGABLES DE CUENTAS EN EXCEL
+// =====================================================================
+function actualizarDesplegablesCuentasExcel() {
+  try {
+    var libro = SpreadsheetApp.getActiveSpreadsheet();
+    var hCuentas = libro.getSheetByName("Cuentas_DB");
+    var hDash = libro.getSheetByName("DASHBOARD");
+    var hConfig = libro.getSheetByName("Configuracion");
+    
+    if (!hCuentas) return;
+    
+    var ultimaFila = Math.max(hCuentas.getLastRow(), 2);
+    
+    var valoresLista = hCuentas.getRange("A2:A" + ultimaFila).getValues().flat().filter(String);
+    if (valoresLista.length === 0) valoresLista = ["SELECCIONE"];
+    
+    var regla = SpreadsheetApp.newDataValidation()
+      .requireValueInList(valoresLista, true)
+      .setAllowInvalid(true) // Permite valores temporales sin borrar la selección activa
+      .build();
+      
+    if (hDash) hDash.getRange("F18").setDataValidation(regla);
+    if (hConfig) hConfig.getRange("U1").setDataValidation(regla);
+  } catch (e) {
+    Logger.log("Error al actualizar desplegables en Excel: " + e.toString());
+  }
+}
+
+// =====================================================================
+// 🌐 EL NUEVO CEREBRO (API ENDPOINT PARA LA PWA EXTERNA)
+// =====================================================================
+function doPost(e) {
+  try {
+    var body = JSON.parse(e.postData.contents);
+    var action = body.action;
+    var params = body.params;
+    var result;
+
+    if (action === "obtenerPerfilTrader") result = obtenerPerfilTrader();
+    else if (action === "obtenerListasDesplegables") result = obtenerListasDesplegables();
+    else if (action === "obtenerDatosConfiguracion") result = obtenerDatosConfiguracion(params);
+    else if (action === "obtenerDatosDashboard") result = obtenerDatosDashboard(params);
+    else if (action === "obtenerUltimos5Trades") result = obtenerUltimos5Trades(params);
+    else if (action === "obtenerDatosGrafico") result = obtenerDatosGrafico(params);
+    else if (action === "obtenerOperativa") result = obtenerOperativa(params);
+    else if (action === "guardarTrade") result = guardarTrade(params);
+    else if (action === "eliminarTrade") result = eliminarTrade(params); 
+    else if (action === "guardarNuevoRetiro") result = guardarNuevoRetiro(params);
+    else if (action === "obtenerHistorialRetiros") result = obtenerHistorialRetiros(params);
+    else if (action === "guardarDatosConfiguracion") result = guardarDatosConfiguracion(params);
+    else if (action === "escalarCapital") result = escalarCapital(params);
+    else if (action === "ejecutarReseteoProfundo") result = ejecutarReseteoProfundo(params);
+    else if (action === "agregarNuevaCuenta") result = agregarNuevaCuenta(params);
+    else if (action === "eliminarEscalamientosExclusivos") result = eliminarEscalamientosExclusivos(params);
+    else if (action === "sincronizarGraficoExcel") { sincronizarGraficoExcel(); result = {exito:true}; }
+    else if (action === "actualizarComentarioEscalado") {
+      result = actualizarComentarioEscalado(params.fila, params.comentario);
+    }
+    else {
+      return ContentService.createTextOutput(JSON.stringify({ exito: false, error: "Acción no reconocida por el motor." }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    return ContentService.createTextOutput(JSON.stringify({ exito: true, data: result }))
+      .setMimeType(ContentService.MimeType.JSON);
+
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({ exito: false, error: error.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
