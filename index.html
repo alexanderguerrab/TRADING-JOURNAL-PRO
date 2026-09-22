@@ -1,0 +1,1778 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><defs><linearGradient id='rainbow' x1='0%25' y1='0%25' x2='100%25' y2='100%25'><stop offset='0%25' stop-color='%23FF2A85'/><stop offset='25%25' stop-color='%23FF7700'/><stop offset='50%25' stop-color='%23FFD700'/><stop offset='75%25' stop-color='%2300CC44'/><stop offset='90%25' stop-color='%230099FF'/><stop offset='100%25' stop-color='%239933FF'/></linearGradient><linearGradient id='tapeGrad' x1='0%25' y1='0%25' x2='100%25' y2='0%25'><stop offset='0%25' stop-color='%23F1C40F'/><stop offset='100%25' stop-color='%23F39C12'/></linearGradient></defs><rect width='512' height='512' rx='112' fill='%23000000'/><text x='50%25' y='380' font-family='Arial, Helvetica, sans-serif' font-weight='900' font-size='340' text-anchor='middle' fill='url(%23rainbow)'>F</text><path d='M 120 380 Q 200 450 320 380 T 420 300' fill='none' stroke='url(%23tapeGrad)' stroke-width='28' stroke-linecap='round'/><path d='M 100 240 Q 250 180 400 270' fill='none' stroke='url(%23tapeGrad)' stroke-width='26' stroke-linecap='round'/><path d='M 140 130 Q 260 60 380 150' fill='none' stroke='url(%23tapeGrad)' stroke-width='24' stroke-linecap='round'/></svg>">
+
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <style>
+      *, *::before, *::after { box-sizing: border-box; }
+      body { background-color: #0D1117; font-family: Arial, sans-serif; margin: 0; display: flex; height: 100vh; position: relative; }
+      
+      .sidebar { width: 250px; background-color: #11151E; border-right: 1px solid #1B202D; display: flex; flex-direction: column; flex-shrink: 0; }
+      .logo-container { padding: 25px 20px; border-bottom: 1px solid #1B202D; display: flex; align-items: center; gap: 12px; }
+      .avatar-circle { width: 45px; height: 45px; border-radius: 50%; background-color: #1B202D; border: 2px solid #00FF7F; overflow: hidden; display: flex; justify-content: center; align-items: center; cursor: pointer; flex-shrink: 0; }
+      .avatar-circle img { width: 100%; height: 100%; object-fit: cover; }
+      .avatar-circle span { font-size: 20px; color: #8B98A5; }
+      .logo { color: #FFFFFF; font-size: 18px; font-weight: bold; text-align: left; }
+      
+      .menu { list-style: none; padding: 20px 0; margin: 0; flex-grow: 1; }
+      .menu-item { padding: 15px 30px; color: #8B98A5; cursor: pointer; font-size: 16px; transition: 0.3s; }
+      .menu-item:hover, .menu-item.active { background-color: #1B202D; color: #00FF7F; border-left: 4px solid #00FF7F; }
+      .menu-item-logout { color: #FF4500; border-top: 1px solid #1B202D; margin-top: auto; }
+      .menu-item-logout:hover { background-color: #1B202D; color: #FF0000; border-left: 4px solid #FF0000; }
+
+      .main-content { flex-grow: 1; padding: 40px; overflow-y: auto; overflow-x: auto; width: 100%; }
+      
+      .user-header { background-color: transparent; padding: 10px 20px; margin-bottom: 30px; text-align: center; }
+      .user-name { color: #00FF7F; font-size: 26px; margin: 0 0 15px 0; font-weight: bold; text-transform: uppercase; }
+      .user-stats-container { display: flex; justify-content: center; align-items: center; gap: 20px; border-bottom: 3px solid #00BFFF; padding-bottom: 15px; font-size: 13px; color: #8B98A5; max-width: 950px; margin: 0 auto; flex-wrap: wrap; }
+      .user-stats-container span { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+      .user-stats-container strong { color: #FFF; font-weight: bold; }
+
+      /* Alineación del perfil: Por defecto (PC/Web) lineal */
+      .stats-layout { display: flex; width: 100%; justify-content: center; align-items: center; gap: 20px; flex-wrap: wrap; }
+      .stats-col { display: flex; flex-direction: row; gap: 20px; align-items: center; }
+      .stats-left, .stats-right { text-align: center; }
+      .stats-center { display: flex; justify-content: center; align-items: center; }
+
+      .btn-editar { background: none; border: none; color: #8B98A5; font-size: 16px; cursor: pointer; margin-left: 5px; transition: 0.3s; outline: none; }
+      .btn-editar:hover { color: #00BFFF; transform: scale(1.2); }
+
+      .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 1000; justify-content: center; align-items: center; }
+      .modal-box { background-color: #151A23; border: 1px solid #303645; padding: 30px; border-radius: 15px; width: 330px; max-width: 95%; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.8); position: relative; z-index: 1; }
+      .modal-box-medidas { width: 600px; max-width: 95%; max-height: 90vh; overflow-y: auto; }
+      .modal-box h2 { color: #00FF7F; margin-top: 0; font-size: 22px; }
+      .modal-box p { color: #8B98A5; font-size: 13px; margin-bottom: 20px; }
+      
+      .input-label { color: #00BFFF; font-size: 11px; margin-bottom: 4px; display: block; text-transform: uppercase; font-weight: bold; text-align: center; width: 100%; }
+      .modal-input { width: 100%; background-color: #0D1117; color: #FFF; border: 1px solid #303645; padding: 10px; margin-bottom: 12px; border-radius: 8px; text-align: center; font-size: 15px; outline: none; font-family: inherit; }
+      .modal-select { width: 100%; background-color: #0D1117; color: #FFF; border: 1px solid #303645; padding: 10px; margin-bottom: 12px; border-radius: 8px; text-align: center; font-size: 15px; outline: none; }
+      
+      .btn-guardar { width: 100%; background-color: #00BFFF; color: #000; font-weight: bold; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-size: 15px; margin-top: 5px; transition: 0.3s; }
+      .btn-guardar:hover:not(:disabled) { background-color: #00FF7F; }
+      .btn-guardar:disabled { background-color: #555; color: #aaa; cursor: not-allowed; }
+      .btn-cerrar { width: 100%; background-color: transparent; color: #8B98A5; border: 1px solid #303645; padding: 8px; border-radius: 8px; cursor: pointer; margin-top: 8px; transition: 0.3s; }
+      .btn-cerrar:hover { background-color: #1B202D; }
+
+      .tabla-diario-container { max-height: 700px; overflow: auto; border-radius: 12px; border: 1px solid #1B202D; background-color: #11151E; }
+      .tabla-diario { width: 100%; border-collapse: collapse; text-align: center; font-size: 13px; min-width: 850px; }
+      .tabla-diario thead th { background-color: #00FF7F; color: #000; position: sticky; top: 0; z-index: 2; padding: 15px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
+      .tabla-diario tbody td { padding: 12px; border-bottom: 1px solid #1B202D; color: #8B98A5; line-height: 1.4; }
+
+      .header-calculadoras { display: flex; justify-content: center; align-items: center; max-width: 1000px; margin: 0 auto 20px auto; position: relative; }
+      .btn-header-calc { position: absolute; right: 0; display: none; }
+
+      .calc-panel { background-color: #151A23; padding: 30px; border-radius: 12px; border: 1px solid #1B202D; max-width: 1000px; margin: 0 auto; width: 100%; }
+      .calc-top-grid { display: grid; grid-template-columns: 1fr 2.5fr 1fr; gap: 20px; align-items: start; margin-bottom: 25px; }
+      .calc-foto-pesas { height: 385px; width: 100%; max-width: 220px; justify-self: center; background-color: #1B202D; border-radius: 12px; border: 2px dashed #303645; display: flex; justify-content: center; align-items: center; overflow: hidden; cursor: pointer; transition: 0.3s; color: #8B98A5; font-size: 12px; flex-direction: column; }
+      .calc-foto-pesas:hover { border-color: #00BFFF; color: #00BFFF; }
+      .calc-foto-pesas img { width: 100%; height: 100%; object-fit: contain; }
+      
+      .calc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+      .calc-box { background-color: #11151E; border: 1px solid #303645; padding: 15px; border-radius: 8px; text-align: center; display: flex; flex-direction: column; justify-content: center; }
+      .calc-box-title { color: #FFFFFF; font-size: 12px; text-transform: uppercase; font-weight: bold; margin-bottom: 10px; }
+      .calc-box-val { font-size: 24px; font-weight: bold; color: #00FF7F; }
+      
+      .tabla-imc { width: 100%; border-collapse: collapse; text-align: center; font-size: 13px; margin-bottom: 25px; }
+      .tabla-imc th { background-color: #00BFFF; color: #000; padding: 12px; border: 1px solid #303645; text-transform: uppercase; font-weight: bold; }
+      .tabla-imc td { padding: 12px; border: 1px solid #303645; color: #FFFFFF !important; font-weight: bold; }
+      .tabla-imc tbody tr:hover { background-color: #1B202D; }
+
+      .calc-foto-bottom { background-color: #1B202D; border-radius: 12px; border: 2px dashed #303645; display: flex; justify-content: center; align-items: center; overflow: hidden; min-height: 250px; cursor: pointer; transition: 0.3s; color: #8B98A5; font-size: 12px; flex-direction: column; }
+      .calc-foto-bottom:hover { border-color: #00BFFF; color: #00BFFF; }
+      .calc-foto-bottom img { width: 100%; height: 100%; object-fit: contain; }
+
+      .filtros-recetas { display: flex; justify-content: center; gap: 15px; margin-bottom: 30px; flex-wrap: wrap; }
+      .btn-filtro { background-color: #1B202D; color: #8B98A5; border: 1px solid #303645; padding: 10px 25px; border-radius: 30px; cursor: pointer; font-weight: bold; font-size: 14px; transition: 0.3s; text-transform: uppercase; }
+      .btn-filtro:hover, .btn-filtro.activo { background-color: #00BFFF; color: #000; border-color: #00BFFF; }
+      .btn-add-receta { background-color: #00FF7F; color: #000; border: none; padding: 10px 25px; border-radius: 30px; cursor: pointer; font-weight: bold; font-size: 14px; transition: 0.3s; text-transform: uppercase; box-shadow: 0 4px 15px rgba(0,255,127,0.3); }
+      .btn-add-receta:hover { transform: scale(1.05); }
+
+      .recetas-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 25px; max-width: 1350px; margin: 0 auto; align-items: start; }
+      .receta-card { background-color: #151A23; border: 1px solid #1B202D; border-radius: 15px; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.5); position: relative; }
+      .btn-edit-receta-card { position: absolute; top: 15px; right: 15px; background: rgba(0, 0, 0, 0.7); border: none; font-size: 18px; padding: 8px; border-radius: 50%; cursor: pointer; transition: 0.3s; z-index: 10; border: 1px solid #303645; }
+      .btn-edit-receta-card:hover { transform: scale(1.1); background: #00BFFF; }
+      
+      .receta-foto { width: 100%; height: 220px; background-color: #11151E; display: flex; justify-content: center; align-items: center; border-bottom: 2px solid #303645; flex-direction: column; color: #8B98A5; font-size: 12px; }
+      .receta-foto img { width: 100%; height: 100%; object-fit: cover; }
+      
+      .receta-info { padding: 20px; }
+      .receta-titulo { color: #FFD700; font-size: 18px; margin: 0 0 10px 0; font-weight: bold; padding: 0 35px; line-height: 1.3; text-align: center; }
+      .receta-tags { display: flex; justify-content: center; gap: 10px; margin-bottom: 15px; }
+      .receta-tag { padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; color: #000; }
+      .tag-cal { background-color: #FFF; }
+      .tag-cat-DESAYUNO { background-color: #00FF7F; }
+      .tag-cat-ALMUERZO { background-color: #FFD700; }
+      .tag-cat-CENA { background-color: #FF0000; color: #FFF; }
+      .tag-cat-SNACK { background-color: #00BFFF; }
+
+      .receta-bloque { margin-bottom: 15px; }
+      .receta-sub { color: #00BFFF; font-size: 13px; text-transform: uppercase; margin-bottom: 5px; font-weight: bold; text-align: center; }
+      .receta-texto { color: #8B98A5; font-size: 13px; line-height: 1.5; white-space: pre-wrap; background-color: #0D1117; padding: 12px; border-radius: 8px; border: 1px solid #1B202D; text-align: left; }
+
+      .dashboard { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; justify-content: center; margin-bottom: 30px; width: 100%; }
+      .card { background-color: #1B202D; border-radius: 12px; padding: 25px; box-shadow: 0 4px 10px rgba(0,0,0,0.6); text-align: center; width: 100%; }
+      .card-title { color: #8B98A5; font-size: 14px; margin: 0 0 10px 0; font-weight: bold; text-transform: uppercase; }
+      .card-value { font-size: 35px; margin: 0; font-weight: bold; }
+      .yellow-divider { border: none; height: 3px; background-color: #FFD700; width: 100%; margin: 40px auto; max-width: 1350px; }
+      
+      .escalones-section { max-width: 1350px; margin: 0 auto; width: 100%; }
+      .section-title { color: #FF00FF; font-size: 20px; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; text-align: center; }
+      .section-subtitle { color: #8B98A5; font-size: 13px; margin-bottom: 20px; text-align: center; text-transform: uppercase; font-weight: bold; }
+      
+      .escalones-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 25px; width: 100%; }
+      .escalon-card { background-color: #11151E; border: 1px solid #1B202D; border-radius: 12px; padding: 15px; display: flex; gap: 15px; align-items: stretch; width: 100%; }
+      .escalon-info { flex: 1; border-radius: 8px; text-align: center; font-weight: bold; border: 1px solid #000; overflow: hidden; display: flex; flex-direction: column; }
+      .escalon-titulo { padding: 6px; font-size: 13px; margin-bottom: 0px; border-bottom: 1px solid #000; }
+      .escalon-sub { font-size: 15px; padding: 8px; border-bottom: 1px solid #000; flex-grow: 1; display: flex; align-items: center; justify-content: center; }
+      .escalon-select { width: 100%; border: none; border-bottom: 1px solid #000; padding: 8px; font-weight: bold; text-align: center; font-size: 14px; outline: none; cursor: pointer; appearance: none; -webkit-appearance: none; }
+      .esc-grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 1px; background: #000; width: 100%; }
+      .esc-col { display: flex; flex-direction: column; }
+      .esc-head { font-size: 11px; border-bottom: 1px solid #000; padding: 4px; }
+      .esc-val { font-size: 12px; padding: 6px; flex-grow: 1; display: flex; align-items: center; justify-content: center; }
+      
+      .esc-input { width: 100%; border: none; background: transparent; text-align: center; font-weight: bold; outline: none; font-size: 12px; font-family: inherit; color: inherit; cursor: pointer; }
+      .esc-input::-webkit-calendar-picker-indicator { cursor: pointer; filter: invert(1); width: 14px; height: 14px; }
+
+      .escalon-foto { width: 120px; flex-shrink: 0; background-color: #1B202D; border: 2px dashed #303645; border-radius: 8px; display: flex; justify-content: center; align-items: center; color: #8B98A5; font-size: 11px; text-align: center; overflow: hidden; cursor: pointer; transition: 0.3s; padding: 0; }
+      .escalon-foto:hover { border-color: #00BFFF; color: #00BFFF; }
+      .escalon-foto img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 6px; }
+      
+      .pendiente .escalon-info { background: #1B202D; color: #FFF; border-color: #FFD700; }
+      .pendiente .escalon-titulo { background: #FFD700; color: #000; border-color: #FFD700; }
+      .pendiente .escalon-sub { border-color: #FFD700; }
+      .pendiente .escalon-select { background-color: #11151E; color: #8B98A5; border-color: #FFD700; }
+      .pendiente .esc-grid { background: #FFD700; }
+      .pendiente .esc-col { background: #0D1117; color: #8B98A5; }
+      .pendiente .esc-input { color: #8B98A5; }
+      .pendiente .esc-head { border-color: #FFD700; }
+      .logrado .escalon-info { background: #FFD700; color: #000; border-color: #000; }
+      .logrado .escalon-titulo { background: #FF00FF; color: #FFF; border-color: #000; }
+      .logrado .escalon-sub { background: #FFD700; border-color: #000; }
+      .logrado .escalon-select { background-color: #39FF14; color: #000; border-color: #000; }
+      .logrado .esc-grid { background: #000; }
+      .logrado .esc-col { background: #FFD700; color: #000; }
+      .logrado .esc-input { color: #000; }
+      .logrado .esc-head { border-color: #000; }
+      
+      .bottom-section { max-width: 1350px; margin: 0 auto; width: 100%; }
+      .mes-acordeon { background-color: #11151E; border: 1px solid #1B202D; border-radius: 12px; margin-bottom: 15px; overflow: hidden; width: 100%; }
+      .mes-header-bar { background-color: #151A23; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; border-bottom: 2px solid transparent; transition: 0.3s; }
+      .mes-header-bar:hover { background-color: #1B202D; }
+      .mes-header-bar.abierto { border-bottom-color: #FF00FF; }
+      .titulo-mes-barra { color: #FFF; font-size: 18px; font-weight: bold; border-left: 5px solid #FFD700; padding-left: 10px; white-space: nowrap; }
+      .fecha-mes-barra { color: #FFFFFF; font-size: 14px; }
+      .fecha-mes-barra strong { color: #00BFFF; margin-left: 5px; }
+      .controles-mes { display: flex; gap: 15px; align-items: center; }
+      .btn-toggle { background: #1B202D; color: #FFF; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: bold; }
+      .btn-editar-mes { background: #FF00FF; color: #FFF; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: bold; }
+      
+      .mes-cuerpo { display: none; padding: 25px; gap: 20px; align-items: flex-start; }
+      .mes-cuerpo.abierto { display: flex; }
+      
+      .medidas-container { flex: 1.2; width: 100%; }
+      .medidas-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px 12px; width: 100%; height: 100%; }
+      .medida-bloque { display: flex; flex-direction: column; align-items: center; width: 100%; }
+      .medida-label { color: #FFFFFF; font-size: 11px; text-transform: uppercase; margin-bottom: 5px; font-weight: bold; text-align: center; }
+      .medida-valor { background-color: #1B202D; color: #00FF7F; font-size: 15px; font-weight: bold; padding: 10px 0; border-radius: 8px; width: 100%; text-align: center; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5); }
+      .medida-valor.special { color: #00BFFF; }
+      
+      .fotos-iniciales-container { flex: 1.6; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; width: 100%; align-items: start; }
+      .foto-espacio { background-color: #1B202D; border: 2px dashed #303645; border-radius: 12px; display: flex; flex-direction: column; justify-content: center; align-items: center; color: #8B98A5; font-size: 12px; text-align: center; overflow: hidden; width: 100%; height: 250px; }
+      .foto-espacio span { font-size: 24px; margin-bottom: 5px; }
+      .foto-espacio img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 12px; }
+
+      @media (max-width: 950px) {
+        body { flex-direction: column; }
+        .sidebar { width: 100%; border-right: none; border-bottom: 2px solid #1B202D; flex-shrink: 0; }
+        .menu { display: flex; overflow-x: auto; padding: 10px; justify-content: flex-start; }
+        .menu-item { padding: 10px 15px; border-left: none; border-bottom: 3px solid transparent; white-space: nowrap; font-size: 14px; }
+        .menu-item:hover, .menu-item.active { border-left: none; border-bottom: 3px solid #00FF7F; background-color: transparent; }
+        .main-content { padding: 15px; overflow-x: auto; } 
+        
+        /* Alineación perfil móvil: Dividido en dos columnas y centrado al final */
+        .user-stats-container { display: flex; flex-direction: column; text-align: left; gap: 12px; padding: 15px; background-color: #11151E; border-radius: 12px; border-bottom: 3px solid #00BFFF; margin: 0 10px; }
+        .stats-layout { justify-content: space-between; gap: 0; }
+        .stats-col { flex-direction: column; gap: 8px; }
+        .stats-left { align-items: flex-start; text-align: left; }
+        .stats-right { align-items: flex-end; text-align: right; }
+        .stats-center { width: 100%; justify-content: center; margin-top: 12px; }
+        
+        .dashboard { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        .escalones-grid { grid-template-columns: 1fr; gap: 15px; }
+        .escalon-card { display: flex; flex-direction: row; padding: 10px; gap: 10px; } 
+        .escalon-foto { width: 90px; min-height: 100px; height: auto; flex-shrink: 0; } 
+        .mes-header-bar { flex-direction: column; text-align: center; gap: 15px; padding: 15px; }
+        .controles-mes { width: 100%; justify-content: center; }
+        .mes-cuerpo { flex-direction: column; padding: 15px; align-items: stretch; }
+        .medidas-container { width: 100%; }
+        .medidas-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        .fotos-iniciales-container { width: 100%; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 15px; align-items: start; } 
+        .foto-espacio { height: 200px; } 
+        .calc-top-grid { grid-template-columns: 1fr; gap: 15px; }
+        .calc-grid { grid-template-columns: 1fr; }
+        .calc-box { grid-column: span 1 !important; }
+        .calc-foto-pesas { height: 250px; padding: 15px 0; max-width: 100%; }
+        .modal-box { width: 95%; padding: 20px; }
+        .tabla-imc { display: block; overflow-x: auto; white-space: nowrap; }
+        .recetas-grid { grid-template-columns: 1fr; }
+        
+        .header-calculadoras { flex-direction: column; gap: 15px; position: static; }
+        .btn-header-calc { position: static; }
+      }
+    </style>
+  </head>
+  <body>
+    
+    <!-- MODAL DE LOGIN / AUTENTICACIÓN CON FONDO CORREGIDO -->
+    <div class="modal-overlay" id="login-modal" style="display: flex; background: rgba(0,0,0,0.7);">
+      <!-- VIDEO DE FONDO LOGIN CON Z-INDEX PARA UBICARSE DETRÁS DEL MODAL -->
+      <video autoplay muted loop playsinline style="position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; z-index:-1; pointer-events:none;">
+        <source src="https://github.com/alexanderguerrab/MI-APP-FITNESS/raw/refs/heads/main/Video%20portada%20IA.mp4" type="video/mp4">
+      </video>
+      <div class="modal-box" style="width: 380px;">
+        <h2>🔐 ACCESO FITNESS PRO</h2>
+        <p>Inicia sesión con tu cuenta para ver tus datos</p>
+        <label class="input-label">Correo Electrónico</label>
+        <input type="email" id="login-email" class="modal-input" placeholder="tucorreo@gmail.com">
+        <label class="input-label">Contraseña</label>
+        <input type="password" id="login-password" class="modal-input" placeholder="********">
+        
+        <!-- Condiciones de la contraseña -->
+        <ul style="color: #A0AEC0; font-size: 11px; text-align: left; margin: 2px 0 10px 0; padding-left: 20px; line-height: 1.4;">
+          <li>Mínimo 8 caracteres</li>
+          <li>Al menos 1 letra mayúscula</li>
+          <li>Al menos 1 letra minúscula</li>
+          <li>Al menos 1 carácter especial (ej. @, #, !, $)</li>
+        </ul>
+        
+        <!-- INICIO: Opción Olvidó Contraseña -->
+        <div style="text-align: right; margin-top: -5px; margin-bottom: 12px;">
+          <a href="#" onclick="recuperarPassword(); return false;" style="color: #00BFFF; font-size: 12px; text-decoration: none; transition: 0.3s;" onmouseover="this.style.color='#00FF7F'" onmouseout="this.style.color='#00BFFF'">¿Olvidaste tu contraseña?</a>
+        </div>
+        <!-- FIN: Opción Olvidó Contraseña -->
+
+        <button class="btn-guardar" onclick="iniciarSesion()">🚀 Iniciar Sesión</button>
+        
+        <!-- NUEVO BOTÓN DE GOOGLE -->
+        <button class="btn-cerrar" onclick="iniciarSesionConGoogle()" style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 10px; border-color: #303645; color: #FFF; background-color: #11151E;">
+          <svg width="18" height="18" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.46-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
+          Iniciar sesión con Google
+        </button>
+        
+        <button class="btn-cerrar" onclick="abrirModalRegistro()" style="color: #00BFFF; border-color: #00BFFF; margin-top: 15px;">Crear Cuenta Nueva</button>
+        
+        <div style="display:flex; gap:10px; margin-top:15px;">
+           <button class="btn-cerrar" onclick="window.open('https://wa.me/584124231008', '_blank')" style="border-color:#00FF7F; color:#00FF7F; flex:1;">📱 WhatsApp</button>
+           <button class="btn-cerrar" onclick="window.open('mailto:alexanderguerra1129@gmail.com', '_blank')" style="border-color:#00BFFF; color:#00BFFF; flex:1;">✉️ Email</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL REGISTRO NUEVO -->
+    <div class="modal-overlay" id="register-modal">
+      <div class="modal-box">
+        <h2>Crear Cuenta Nueva</h2>
+        <label class="input-label">Correo Electrónico</label>
+        <input type="email" id="reg-email" class="modal-input" placeholder="tucorreo@gmail.com">
+        
+        <label class="input-label">Contraseña</label>
+        <input type="password" id="reg-password" class="modal-input" placeholder="********">
+        <!-- NOTA DE FORMATO DE CONTRASEÑA -->
+        <ul style="color: #8B98A5; font-size: 11px; text-align: left; margin: 2px 0 15px 0; padding-left: 20px; line-height: 1.4;">
+          <li>Mínimo 8 caracteres</li>
+          <li>Al menos 1 letra mayúscula</li>
+          <li>Al menos 1 letra minúscula</li>
+          <li>Al menos 1 carácter especial (ej. @, #, !, $)</li>
+        </ul>
+
+        <label class="input-label">Teléfono (con cód. de área)</label>
+        <input type="text" id="reg-telefono" class="modal-input" placeholder="+1234567890">
+        <button class="btn-guardar" onclick="crearCuentaFirebase()">Registrarse</button>
+        <button class="btn-cerrar" onclick="cerrarModalRegistro()">Volver al Login</button>
+      </div>
+    </div>
+
+    <!-- MODALES DE EDICIÓN -->
+    <div class="modal-overlay" id="onboarding-modal">
+      <div class="modal-box">
+        <h2 id="modal-titulo">Configurar Perfil</h2>
+        <label class="input-label">Nombre de Usuario</label>
+        <input type="text" id="mod-nombre" class="modal-input" placeholder="Nombre">
+        <label class="input-label">Fecha de Registro (DD/MM/AAAA)</label>
+        <input type="text" id="mod-fecha-reg" class="modal-input" placeholder="DD/MM/AAAA">
+        <label class="input-label">Peso Inicial (kg)</label>
+        <input type="number" id="mod-peso" class="modal-input" placeholder="Peso Inicial" step="0.1">
+        <label class="input-label">Talla (mts)</label>
+        <input type="number" id="mod-talla" class="modal-input" placeholder="Talla" step="0.01">
+        <label class="input-label">Fecha Nacimiento (DD/MM/AAAA)</label>
+        <input type="text" id="mod-fecha" class="modal-input" placeholder="DD/MM/AAAA">
+        <label class="input-label">Peso Objetivo (kg)</label>
+        <input type="number" id="mod-peso-obj" class="modal-input" placeholder="Peso Objetivo" step="0.1">
+        <label class="input-label">Avatar (Enlace Google Drive)</label>
+        <input type="text" id="mod-avatar" class="modal-input" placeholder="https://drive.google.com/...">
+        <button class="btn-guardar" onclick="guardarOnboarding()">Guardar</button>
+        <button class="btn-cerrar" id="btn-modal-close" onclick="cerrarModal()">Cancelar</button>
+      </div>
+    </div>
+
+    <div class="modal-overlay" id="modal-foto-escalon">
+      <div class="modal-box">
+        <h2 id="tit-foto-esc">Foto del Escalón</h2>
+        <input type="text" id="mod-foto-esc-url" class="modal-input" placeholder="https://drive.google.com/...">
+        <button class="btn-guardar" id="btn-save-foto-esc" onclick="guardarFotoEscalon()">💾 Guardar</button>
+        <button class="btn-cerrar" onclick="cerrarModalFotoEscalon()">Cancelar</button>
+      </div>
+    </div>
+
+    <div class="modal-overlay" id="modal-diario">
+      <div class="modal-box">
+        <h2>Día: <span id="tit-diario-fecha" style="color:#FFF;"></span></h2>
+        <label class="input-label">Peso (kg)</label>
+        <input type="number" id="mod-diario-peso" class="modal-input" step="0.1">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+          <div>
+            <label class="input-label">Caminata</label>
+            <select id="mod-diario-caminata" class="modal-select">
+              <option value=""></option><option value="NO">NO</option><option value="15 MIN">15 MIN</option>
+              <option value="30 MIN">30 MIN</option><option value="45 MIN">45 MIN</option><option value="1 HORA">1 HORA</option>
+              <option value="1H 30 MIN">1H 30 MIN</option><option value="2 HORAS">2 HORAS</option>
+            </select>
+          </div>
+          <div>
+            <label class="input-label">Energía (1-5)</label>
+            <select id="mod-diario-energia" class="modal-select">
+              <option value=""></option><option value="5">5</option><option value="4">4</option>
+              <option value="3">3</option><option value="2">2</option><option value="1">1</option>
+            </select>
+          </div>
+        </div>
+        <label class="input-label">Vasos de Agua</label>
+        <select id="mod-diario-agua" class="modal-select">
+          <option value=""></option><option value="4 VASOS">4 VASOS</option><option value="6 VASOS">6 VASOS</option>
+          <option value="1 LITRO">1 LITRO</option><option value="2 LITROS">2 LITROS</option><option value="3 LITROS">3 LITROS</option>
+          <option value="4 LITROS">4 LITROS</option><option value="5+ LITROS">5+ LITROS</option>
+        </select>
+        <label class="input-label">Presión Arterial (Ej: 120/80)</label>
+        <input type="text" id="mod-diario-presion" class="modal-input" placeholder="Sistólica/Diastólica">
+        <label class="input-label">Notas</label>
+        <input type="text" id="mod-diario-notas" class="modal-input" placeholder="Nota o comentario">
+        <button class="btn-guardar" id="btn-save-diario" onclick="guardarDiaDiario()">💾 Guardar Día</button>
+        <button class="btn-cerrar" onclick="cerrarModalDiario()">Cancelar</button>
+      </div>
+    </div>
+
+    <div class="modal-overlay" id="modal-fotos-calc">
+      <div class="modal-box" style="height: 80vh; overflow-y: auto;">
+        <h2>Imágenes Calculadora</h2>
+        <p>Pega los enlaces de Google Drive</p>
+        <label class="input-label">Izquierda (B2)</label>
+        <input type="text" id="mod-calc-img1" class="modal-input">
+        <label class="input-label">Peso Ideal Grande (E1)</label>
+        <input type="text" id="mod-calc-img2" class="modal-input">
+        <label class="input-label">Agua Izquierda (F1)</label>
+        <input type="text" id="mod-calc-img3" class="modal-input">
+        <label class="input-label">Derecha Contraparte (G13)</label>
+        <input type="text" id="mod-calc-img4" class="modal-input">
+        <label class="input-label">Extra Derecha Abajo (G1)</label>
+        <input type="text" id="mod-calc-img5" class="modal-input">
+        <button class="btn-guardar" id="btn-save-calc-fotos" onclick="guardarFotosCalc()">💾 Guardar Fotos</button>
+        <button class="btn-cerrar" onclick="cerrarModalFotosCalc()">Cancelar</button>
+      </div>
+    </div>
+
+    <div class="modal-overlay" id="modal-mes-universal">
+      <div class="modal-box modal-box-medidas">
+        <h2 id="tit-modal-mes">Editar MES X</h2>
+        <label class="input-label">Fecha del Registro</label>
+        <input type="text" id="mod-fecha-med" class="modal-input" style="width: 95%;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-bottom: 15px;">
+          <div><label class="input-label" style="color:#00FF7F;">Peso Actual</label><input type="number" id="mod-peso-colb" class="modal-input" step="0.1"></div>
+          <div><label class="input-label" style="color:#00FF7F;">Dif. Objetivo</label><input type="number" id="mod-dif-obj" class="modal-input" step="0.1"></div>
+          <div><label class="input-label">Cuello</label><input type="number" id="mod-cuello" class="modal-input" step="0.1"></div>
+          <div><label class="input-label">Hombro</label><input type="number" id="mod-hombro" class="modal-input" step="0.1"></div>
+          <div><label class="input-label">Pecho</label><input type="number" id="mod-pecho" class="modal-input" step="0.1"></div>
+          <div><label class="input-label">Cintura</label><input type="number" id="mod-cintura" class="modal-input" step="0.1"></div>
+          <div><label class="input-label">Brazo Izq</label><input type="number" id="mod-brazoI" class="modal-input" step="0.1"></div>
+          <div><label class="input-label">Brazo Der</label><input type="number" id="mod-brazoD" class="modal-input" step="0.1"></div>
+          <div><label class="input-label">Antebrazo Izq</label><input type="number" id="mod-anteI" class="modal-input" step="0.1"></div>
+          <div><label class="input-label">Antebrazo Der</label><input type="number" id="mod-anteD" class="modal-input" step="0.1"></div>
+          <div><label class="input-label">Circ. Abdominal</label><input type="number" id="mod-circAb" class="modal-input" step="0.1"></div>
+          <div><label class="input-label">Cadera</label><input type="number" id="mod-cadera" class="modal-input" step="0.1"></div>
+          <div><label class="input-label">Muslo Izq</label><input type="number" id="mod-musloI" class="modal-input" step="0.1"></div>
+          <div><label class="input-label">Muslo Der</label><input type="number" id="mod-musloD" class="modal-input" step="0.1"></div>
+          <div><label class="input-label">Pantorrilla Izq</label><input type="number" id="mod-pantI" class="modal-input" step="0.1"></div>
+          <div><label class="input-label">Pantorrilla Der</label><input type="number" id="mod-pantD" class="modal-input" step="0.1"></div>
+        </div>
+        <h3 style="color:#00BFFF; font-size: 14px;">📸 FOTOS (Google Drive)</h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-bottom: 15px;">
+          <div><label class="input-label">Frente</label><input type="text" id="mod-foto-frente" class="modal-input"></div>
+          <div><label class="input-label">Espalda</label><input type="text" id="mod-foto-espalda" class="modal-input"></div>
+          <div><label class="input-label">Perfil Der.</label><input type="text" id="mod-foto-pder" class="modal-input"></div>
+          <div><label class="input-label">Perfil Izq.</label><input type="text" id="mod-foto-pizq" class="modal-input"></div>
+        </div>
+        <button class="btn-guardar" id="btn-save-mes-universal" onclick="guardarMedidasMesUniversal()">💾 Guardar Mes</button>
+        <button class="btn-cerrar" onclick="cerrarModalMesUniversal()">Cancelar</button>
+      </div>
+    </div>
+
+    <div class="modal-overlay" id="modal-receta">
+      <div class="modal-box modal-box-medidas">
+        <h2 id="tit-modal-receta">Nueva Receta</h2>
+        <input type="hidden" id="mod-receta-fila">
+        <label class="input-label">Nombre del Plato</label>
+        <input type="text" id="mod-receta-nombre" class="modal-input">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+            <div><label class="input-label">Categoría</label><select id="mod-receta-cat" class="modal-select"><option value="DESAYUNO">DESAYUNO</option><option value="ALMUERZO">ALMUERZO</option><option value="CENA">CENA</option><option value="SNACK">SNACK</option></select></div>
+            <div><label class="input-label">Calorías</label><input type="text" id="mod-receta-cal" class="modal-input" placeholder="Ej: 350 kcal"></div>
+        </div>
+        <label class="input-label">Ingredientes</label>
+        <textarea id="mod-receta-ing" class="modal-input" style="height: 90px; resize: vertical;" placeholder="1/2 taza de avena&#10;1 manzana..."></textarea>
+        <label class="input-label">Preparación</label>
+        <textarea id="mod-receta-prep" class="modal-input" style="height: 90px; resize: vertical;" placeholder="1. Mezclar todo&#10;2. Hornear..."></textarea>
+        <label class="input-label">Foto (Enlace Google Drive)</label>
+        <input type="text" id="mod-receta-foto" class="modal-input" placeholder="Pega aquí el link">
+        <button class="btn-guardar" id="btn-save-receta" onclick="guardarReceta()">💾 Guardar Receta</button>
+        <button class="btn-cerrar" onclick="cerrarModalReceta()">Cancelar</button>
+      </div>
+    </div>
+
+    <!-- NUEVO MODAL EDITAR PAGO -->
+    <div class="modal-overlay" id="modal-editar-pago">
+      <div class="modal-box">
+        <h2 style="color: #00BFFF;">✏️ Editar Registro de Pago</h2>
+        <input type="hidden" id="edit-pago-fila">
+        
+        <label class="input-label">Fecha Real de Pago</label>
+        <input type="date" id="edit-pago-fecha" class="modal-input">
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom: 10px;">
+          <div>
+            <label class="input-label">Mes</label>
+            <select id="edit-pago-mes" class="modal-select">
+              <option value="ENERO">Enero</option><option value="FEBRERO">Febrero</option><option value="MARZO">Marzo</option><option value="ABRIL">Abril</option><option value="MAYO">Mayo</option><option value="JUNIO">Junio</option><option value="JULIO">Julio</option><option value="AGOSTO">Agosto</option><option value="SEPTIEMBRE">Septiembre</option><option value="OCTUBRE">Octubre</option><option value="NOVIEMBRE">Noviembre</option><option value="DICIEMBRE">Diciembre</option>
+            </select>
+          </div>
+          <div>
+            <label class="input-label">Año</label>
+            <select id="edit-pago-anio" class="modal-select">
+              <option value="2024">2024</option><option value="2025">2025</option><option value="2026">2026</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom: 10px;">
+          <div>
+            <label class="input-label">Suscripción</label>
+            <select id="edit-pago-plan" class="modal-select">
+              <option value="Mensual">Mensual</option><option value="Anual">Anual</option>
+            </select>
+          </div>
+          <div>
+            <label class="input-label">Método</label>
+            <select id="edit-pago-metodo" class="modal-select">
+              <option value="Zelle">Zelle</option><option value="Pago Móvil">Pago Móvil</option><option value="Binance">Binance</option><option value="Efectivo">Efectivo</option>
+            </select>
+          </div>
+        </div>
+        
+        <label class="input-label" style="color: #FFD700;">Monto Cobrado ($)</label>
+        <input type="number" id="edit-pago-costo" class="modal-input" placeholder="Ej: 20">
+
+        <label class="input-label">Recibo (URL)</label>
+        <input type="text" id="edit-pago-recibo" class="modal-input" placeholder="Enlace del Drive">
+
+        <button class="btn-guardar" id="btn-save-edit-pago" onclick="guardarEdicionPago()">💾 Guardar Cambios</button>
+        <button class="btn-cerrar" onclick="cerrarModalEditarPago()">Cancelar</button>
+      </div>
+    </div>
+
+
+    <!-- SIDEBAR -->
+    <div class="sidebar" style="display: none;">
+      <div class="logo-container">
+        <div class="avatar-circle" id="sidebar-avatar" onclick="abrirEditor()" title="Editar Avatar / Perfil"><span>​👩‍💻</span></div>
+        <div class="logo" id="app-logo-text">FITNESS PRO</div>
+      </div>
+      <ul class="menu">
+        <li class="menu-item active" id="btn-menu-perfil" onclick="cambiarPestana('perfil')">🏋️ Perfil</li>
+        <li class="menu-item" id="btn-menu-diario" onclick="cambiarPestana('diario')">📅 Diario</li>
+        <li class="menu-item" id="btn-menu-calculadoras" onclick="cambiarPestana('calculadoras')">🧮 Calculadoras</li>
+        <li class="menu-item" id="btn-menu-recetas" onclick="cambiarPestana('recetas')">🥗 Recetas</li>
+        <li class="menu-item" id="btn-menu-misfinanzas" onclick="cambiarPestana('misfinanzas')">💳 Mi Suscripción</li>
+        
+        <!-- Pestañas Nuevas de Soporte y Finanzas -->
+        <li class="menu-item" onclick="window.open('https://wa.me/584124231008', '_blank')">📱 Soporte WhatsApp</li>
+        <li class="menu-item" onclick="window.open('mailto:alexanderguerra1129@gmail.com', '_blank')">✉️ Soporte Email</li>
+        <li class="menu-item" id="btn-menu-finanzas" onclick="cambiarPestana('finanzas')" style="display:none; color:#00BFFF;">💰 Finanzas</li>
+
+        <li class="menu-item" id="btn-menu-usuarios" onclick="cambiarPestana('usuarios')" style="display:none; color:#FFD700;">🔑 Usuarios (Admin)</li>
+        <li class="menu-item menu-item-logout" onclick="cerrarSesionFirebase()">🚪 Cerrar Sesión</li>
+      </ul>
+    </div>
+
+    <div class="main-content" style="display: none;">
+      
+      <div class="user-header" id="user-header-card">
+        <h2 class="user-name" id="val-nombre">Cargando...</h2>
+        <div class="user-stats-container" id="user-stats-container">
+          <!-- Carga vía JS adaptada para móvil -->
+        </div>
+      </div>
+
+      <!-- PESTAÑA PERFIL -->
+      <div id="pestana-perfil">
+        <div class="dashboard">
+          <div class="card"><p class="card-title">PESO ACTUAL HOY</p><p class="card-value" id="val-peso" style="color: #00FF7F;">--</p></div>
+          <div class="card"><p class="card-title">TU EVOLUCIÓN HOY ES:</p><p class="card-value" id="val-evolucion">--</p></div>
+          <div class="card"><p class="card-title">PESO OBJETIVO</p><p class="card-value" id="val-peso-obj" style="color: #00BFFF;">--</p></div>
+          <div class="card"><p class="card-title">DÉFICIT CALÓRICO</p><p class="card-value" id="val-deficit" style="color: #FF4500;">--</p></div>
+        </div>
+        <hr class="yellow-divider">
+        <div class="escalones-section">
+          <h3 class="section-title">🏆 Escalera de Logros</h3>
+          <p class="section-subtitle">12 Metas</p>
+          <div class="escalones-grid" id="contenedor-metas"><div style="text-align:center; color:#8B98A5; grid-column: span 3; padding: 20px;">Cargando... ⏳</div></div>
+        </div>
+        <hr class="yellow-divider">
+        <div class="bottom-section">
+          <h3 class="section-title" style="margin-top: 20px;">📸 Evolución Mensual</h3>
+          <p class="section-subtitle">12 Meses</p>
+          <div id="contenedor-meses"><div style="text-align:center; color:#8B98A5; padding: 20px;">Cargando... ⏳</div></div>
+        </div>
+      </div>
+
+      <!-- PESTAÑA DIARIO -->
+      <div id="pestana-diario" style="display: none;">
+        <h3 class="section-title" style="text-align:center;">📔 TU DIARIO DE PROGRESO</h3>
+        <div class="tabla-diario-container">
+          <table class="tabla-diario">
+            <thead>
+              <tr><th>Fecha</th><th>Peso Día</th><th>Dif. Diario</th><th>Progreso</th><th>Actividad / Energía</th><th>Agua</th><th>P. Arterial</th><th>Notas</th><th></th></tr>
+            </thead>
+            <tbody id="tabla-diario-body">
+              <tr><td colspan="9" style="text-align:center; padding: 30px;">Cargando Diario... ⏳</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- PESTAÑA CALCULADORAS -->
+      <div id="pestana-calculadoras" style="display: none;">
+        <div class="header-calculadoras">
+          <h3 class="section-title" style="margin: 0;">🧮 CALCULADORA DE SALUD</h3>
+          <button class="btn-editar-mes btn-header-calc" id="btn-edit-calc-fotos" onclick="abrirModalFotosCalc()">📸 Editar Fotos</button>
+        </div>
+        <div class="calc-panel">
+          <div class="calc-top-grid">
+            <div class="calc-foto-pesas" id="calc-foto-1" onclick="abrirModalFotosCalc()"><span>📷</span><br>B2 (Pesas)</div>
+            
+            <div class="calc-grid">
+              <div class="calc-box"><div class="calc-box-title">Género</div><select id="calc-genero" class="modal-select" style="width: 100%; margin:0;" onchange="calcularIMC()"><option value="Hombre">Hombre</option><option value="Mujer">Mujer</option></select></div>
+              <div class="calc-box"><div class="calc-box-title">Talla (mts)</div><input type="number" id="calc-talla" class="modal-input" style="width: 85%; margin:0; color: #00BFFF; font-weight: bold; font-size: 18px;" step="0.01" oninput="calcularIMC()"></div>
+              <div class="calc-box"><div class="calc-box-title">Peso Actual (kg)</div><input type="number" id="calc-peso" class="modal-input" style="width: 85%; margin:0; color: #00FF7F; font-weight: bold; font-size: 18px;" step="0.1" oninput="calcularIMC()"></div>
+              <div class="calc-box"><div class="calc-box-title">Tu Peso Ideal</div><div class="calc-box-val" id="res-peso-ideal" style="color: #00BFFF;">--</div></div>
+              
+              <div class="calc-box" style="grid-column: span 2; display:flex; flex-direction:row; align-items:center; justify-content:space-around;">
+                <div><div class="calc-box-title">Tu IMC Actual (kg/m2)</div><div class="calc-box-val" id="res-imc">--</div></div>
+                <div><div class="calc-box-title">Estado (Categoría)</div><div class="calc-box-val" id="res-estado" style="font-size: 20px;">--</div></div>
+              </div>
+              
+              <div class="calc-box" style="grid-column: span 2; display:flex; flex-direction:row; align-items:center; justify-content:space-around; margin-top: 10px;">
+                <div><div class="calc-box-title">Tu Presión Hoy</div><div class="calc-box-val" id="res-presion" style="color: #FFA500;">--</div></div>
+                <div><div class="calc-box-title">Estado</div><div class="calc-box-val" id="res-presion-estado" style="font-size: 20px;">--</div></div>
+              </div>
+
+              <div class="calc-box" style="grid-column: span 2; display:flex; flex-direction:row; align-items:center; justify-content:space-around; margin-top: 10px;">
+                <div><div class="calc-box-title">Última Caminata</div><div class="calc-box-val" id="res-caminata">--</div></div>
+                <div><div class="calc-box-title">Vasos de Agua</div><div class="calc-box-val" id="res-agua">--</div></div>
+              </div>
+            </div>
+
+            <div class="calc-foto-pesas" id="calc-foto-4" onclick="abrirModalFotosCalc()"><span>📷</span><br>G13 (Contraparte)</div>
+          </div>
+
+          <table class="tabla-imc">
+            <thead><tr><th>Rango de IMC</th><th>Estado (Clasificación)</th><th>Descripción / Nivel de Riesgo</th></tr></thead>
+            <tbody>
+              <tr><td style="color:#FFA500;">Menor a 18,5</td><td style="color:#FFA500;">Bajo Peso</td><td>Por debajo del peso saludable recomendado.</td></tr>
+              <tr><td style="color:#00FF00;">De 18,5 a 24,9</td><td style="color:#00FF00;">Normal</td><td>Rango de peso saludable.</td></tr>
+              <tr><td style="color:#00FFFF;">De 25,0 a 29,9</td><td style="color:#00FFFF;">Sobrepeso</td><td>Sigue siendo "Sobrepeso".</td></tr>
+              <tr><td style="color:#FF00FF;">De 30,0 a 34,9</td><td style="color:#FF00FF;">Obesidad Grado 1</td><td>Bajo riesgo.</td></tr>
+              <tr><td style="color:#FF4500;">De 35,0 a 39,9</td><td style="color:#FF4500;">Obesidad Grado 2</td><td>Riesgo moderado.</td></tr>
+              <tr><td style="color:#FF0000;">De 40,0 en adelante</td><td style="color:#FF0000;">Obesidad Grado 3</td><td>También conocida como obesidad mórbida o de alto riesgo.</td></tr>
+            </tbody>
+          </table>
+
+          <table class="tabla-imc" style="margin-top:20px;">
+            <thead>
+              <tr><th colspan="5" style="background-color: #FFA500; color: #000; font-size: 15px;">PRESIÓN ARTERIAL POR EDAD</th></tr>
+              <tr>
+                <th style="background-color: #FFFF00; color: #000;">Edad</th>
+                <th style="background-color: #00FF00; color: #000;">Normal (Rango Saludable)</th>
+                <th style="background-color: #FFA500; color: #000;">Elevada</th>
+                <th style="background-color: #8B0000; color: #FFF;">Presión Arterial Alta</th>
+                <th style="background-color: #FF0000; color: #FFF;">Etapa 2 Alta</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>30–39 años</td><td>105–&lt;120 / 68–&lt;80</td><td>120–129 / &lt;80</td><td>130–139 / 80–89</td><td>≥140 / ≥90</td></tr>
+              <tr><td>40–49 años</td><td>110–&lt;125 / 70–&lt;82</td><td>125–129 / &lt;80</td><td>130–139 / 80–89</td><td>≥140 / ≥90</td></tr>
+              <tr><td>50–59 años</td><td>115–&lt;130 / 72–&lt;80</td><td>130–139 / &lt;80</td><td>140–149 / 80–89</td><td>≥150 / ≥90</td></tr>
+              <tr><td>60–69 años</td><td>120–&lt;135 / 73–&lt;80</td><td>135–139 / &lt;80</td><td>140–149 / 80–89</td><td>≥150 / ≥90</td></tr>
+              <tr><td>70–79 años</td><td>125–&lt;140 / 74–&lt;80</td><td>140–149 / &lt;80</td><td>150–159 / 80–89</td><td>≥150 / ≥90</td></tr>
+              <tr><td>80+ años</td><td>130–&lt;145 / 75–&lt;80</td><td>145–149 / &lt;80</td><td>150–159 / 80–89</td><td>≥160 / ≥90</td></tr>
+            </tbody>
+          </table>
+
+          <div style="margin-top: 30px;">
+            <div class="calc-foto-bottom" id="calc-foto-2" onclick="abrirModalFotosCalc()" style="margin-bottom: 20px;"><span>📷</span><br>E1 (Peso Ideal)</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+              <div class="calc-foto-bottom" id="calc-foto-3" onclick="abrirModalFotosCalc()"><span>📷</span><br>F1 (Vasos de Agua)</div>
+              <div class="calc-foto-bottom" id="calc-foto-5" onclick="abrirModalFotosCalc()"><span>📷</span><br>G1 (Nueva Foto)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PESTAÑA RECETAS -->
+      <div id="pestana-recetas" style="display: none;">
+        <h3 class="section-title" style="text-align:center;">🥗 TUS RECETAS SALUDABLES</h3>
+        <div style="display: flex; justify-content: center; gap: 15px; margin-bottom: 30px; flex-wrap: wrap; align-items: center;">
+          <div id="contenedor-btn-receta" style="display: none;">
+            <button class="btn-add-receta" onclick="abrirModalReceta(null)">➕ Añadir Nueva Receta</button>
+          </div>
+          <div style="width: 2px; height: 30px; background-color:#303645; margin: 0 10px;"></div>
+          <button class="btn-filtro activo" id="filtro-TODOS" onclick="filtrarRecetasUI('TODOS')">Todo</button>
+          <button class="btn-filtro" id="filtro-DESAYUNO" onclick="filtrarRecetasUI('DESAYUNO')">Desayuno</button>
+          <button class="btn-filtro" id="filtro-ALMUERZO" onclick="filtrarRecetasUI('ALMUERZO')">Almuerzo</button>
+          <button class="btn-filtro" id="filtro-CENA" onclick="filtrarRecetasUI('CENA')">Cena</button>
+          <button class="btn-filtro" id="filtro-SNACK" onclick="filtrarRecetasUI('SNACK')">Snack</button>
+        </div>
+        <div class="recetas-grid" id="contenedor-recetas">
+          <div style="text-align:center; color:#8B98A5; padding: 30px;">Cargando recetas... ⏳</div>
+        </div>
+      </div>
+
+      <!-- PESTAÑA MIS FINANZAS (CLIENTE) -->
+      <div id="pestana-misfinanzas" style="display: none;">
+        <h3 class="section-title" style="text-align:center;">💳 ESTADO DE MI SUSCRIPCIÓN</h3>
+        <div class="dashboard" style="grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));">
+          <div class="card"><p class="card-title">PLAN ACTUAL</p><p class="card-value" id="cli-fin-plan" style="color: #00BFFF;">--</p></div>
+          <div class="card"><p class="card-title">PRÓXIMO PAGO</p><p class="card-value" id="cli-fin-prox" style="color: #FFD700;">--</p></div>
+          <div class="card"><p class="card-title">ESTADO</p><p class="card-value" id="cli-fin-estado">--</p></div>
+        </div>
+        <hr class="yellow-divider">
+        <h3 class="section-title" style="margin-top: 20px;">📜 Historial de Pagos</h3>
+        <div class="tabla-diario-container">
+          <table class="tabla-diario">
+            <!-- Actualizado para mostrar el Monto en la tabla del cliente -->
+            <thead><tr><th>Fecha de Pago</th><th>Periodo Cubierto</th><th>Plan</th><th>Método</th><th>Monto</th><th>Recibo</th></tr></thead>
+            <tbody id="tabla-cli-pagos">
+               <tr><td colspan="6" style="text-align:center;">Cargando historial... ⏳</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- PESTAÑA FINANZAS (SOLO ADMIN) -->
+      <div id="pestana-finanzas" style="display: none;">
+        <h3 class="section-title" style="text-align:center;">💰 GESTIÓN DE FINANZAS</h3>
+        
+        <!-- Alertas de Vencimiento -->
+        <div style="background-color: #11151E; border: 1px solid #FF4500; border-radius: 12px; padding: 20px; margin-bottom: 25px; max-width: 1350px; margin-left: auto; margin-right: auto;">
+          <h4 style="color:#FF4500; margin-top:0;">⚠️ Clientes Vencidos o Próximos a Vencer</h4>
+          <div style="overflow-x: auto;">
+            <table class="tabla-diario" style="min-width: 100%;">
+              <thead><tr><th>Cliente</th><th>Próximo Pago</th><th>Estado</th></tr></thead>
+              <tbody id="tabla-alertas-finanzas">
+                 <tr><td colspan="3" style="text-align:center;">Cargando alertas...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="calc-panel" style="max-width: 1350px;">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+            <!-- Controles de Registro -->
+            <div>
+              <label class="input-label">Buscar Cliente Rápido</label>
+              <input type="text" id="fin-buscador" class="modal-input" placeholder="Escribe un nombre para filtrar..." onkeyup="filtrarClientesFinanzas()">
+
+              <label class="input-label">Seleccionar Cliente</label>
+              <select id="fin-uid" class="modal-select" onchange="cargarHistorialUsuario()"></select>
+              
+              <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                <div><label class="input-label">Fecha Base (Día de cobro)</label><input type="date" id="fin-base" class="modal-input"></div>
+                <div><label class="input-label">Suscripción</label><select id="fin-plan" class="modal-select"><option value="Mensual">Mensual</option><option value="Anual">Anual</option></select></div>
+              </div>
+
+              <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                <div><label class="input-label">Mes Abonado</label><select id="fin-mes" class="modal-select"><option value="ENERO">Enero</option><option value="FEBRERO">Febrero</option><option value="MARZO">Marzo</option><option value="ABRIL">Abril</option><option value="MAYO">Mayo</option><option value="JUNIO">Junio</option><option value="JULIO">Julio</option><option value="AGOSTO">Agosto</option><option value="SEPTIEMBRE">Septiembre</option><option value="OCTUBRE">Octubre</option><option value="NOVIEMBRE">Noviembre</option><option value="DICIEMBRE">Diciembre</option></select></div>
+                <div><label class="input-label">Año</label><select id="fin-anio" class="modal-select"><option value="2024">2024</option><option value="2025" selected>2025</option><option value="2026">2026</option></select></div>
+              </div>
+              
+              <label class="input-label">Método de Pago</label>
+              <select id="fin-metodo" class="modal-select"><option value="Zelle">Zelle</option><option value="Pago Móvil">Pago Móvil</option><option value="Binance">Binance</option><option value="Efectivo">Efectivo</option></select>
+              
+              <!-- NUEVO: Campo de costo y Botón Nuevo Costo -->
+              <div style="display:grid; grid-template-columns: 2fr 1fr; gap:10px; margin-top: 10px;">
+                <div>
+                   <label class="input-label" style="color: #00FF7F;">Costo a Cobrar ($)</label>
+                   <input type="number" id="fin-costo" class="modal-input" placeholder="Ej: 20">
+                </div>
+                <div style="display: flex; align-items: flex-end; margin-bottom: 12px;">
+                   <!-- Este botón permite "Setear un nuevo precio" enfocado directamente, sin borrar el pasado -->
+                   <button type="button" class="btn-guardar" style="margin: 0; font-size: 12px; background-color: #00BFFF; color: #000; border: 1px solid #00BFFF;" onclick="document.getElementById('fin-costo').focus(); document.getElementById('fin-costo').value='';">💰 Nuevo Costo</button>
+                </div>
+              </div>
+
+              <label class="input-label">Enlace de Comprobante (Drive/Imgur)</label>
+              <input type="text" id="fin-comprobante" class="modal-input" placeholder="URL del recibo">
+              
+              <button class="btn-guardar" id="btn-save-pago" onclick="guardarPago()" style="background-color: #00FF7F; color: #000;">💾 Registrar Pago y Sincronizar Mes</button>
+            </div>
+            
+            <!-- Historial de Pagos -->
+            <div class="tabla-diario-container" style="max-height: 520px;">
+              <h4 style="color:#00BFFF; text-align:center; margin-top:15px;">Historial de Pagos del Cliente</h4>
+              <table class="tabla-diario">
+                <thead><tr><th>Fecha Pago</th><th>Periodo</th><th>Plan</th><th>Método</th><th>Monto</th><th>Recibo</th><th>Acciones</th></tr></thead>
+                <tbody id="tabla-historial-finanzas">
+                   <tr><td colspan="7" style="text-align:center;">Selecciona un cliente para ver su historial.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PESTAÑA USUARIOS (SOLO ADMIN) -->
+      <div id="pestana-usuarios" style="display: none;">
+        <h3 class="section-title" style="text-align:center;">🔑 PANEL DE ADMINISTRACIÓN</h3>
+        <p class="section-subtitle">Gestión de Usuarios Registrados</p>
+        <div class="tabla-diario-container">
+          <table class="tabla-diario">
+            <thead><tr><th>UID</th><th>Nombre</th><th>Correo</th><th>Estado Acceso</th><th>Acciones</th></tr></thead>
+            <tbody id="tabla-usuarios-body">
+              <tr><td colspan="5" style="text-align:center; padding: 30px;">Cargando usuarios... ⏳</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- SCRIPT DE CONEXIÓN Y FIREBASE -->
+    <script>
+      var SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwDP2ho2taGDWXz7_M1_449mn6QYsmHTylkrn7quncbZxB5Vyk7gvQ-dTvFd5J5NNrO/exec";
+
+      var firebaseConfig = {
+        apiKey: "AIzaSyDbmz_PlxvG0EdqMTn5SVJTfvD8r_Du3gQ",
+        authDomain: "fitness-pro-99919.firebaseapp.com",
+        projectId: "fitness-pro-99919",
+        storageBucket: "fitness-pro-99919.firebasestorage.app",
+        messagingSenderId: "908980564528",
+        appId: "1:908980564528:web:8de7c1effdc5f490a573f5"
+      };
+
+      firebase.initializeApp(firebaseConfig);
+
+      var currentUserId = ""; 
+      var misDatosGlobales = {};
+      var datosFinanzasGlobal = null; // Guardará en memoria datos de clientes para el buscador
+      var escalonFotoActivo = 0; 
+      var mesActivoEdicion = 1; 
+      var diaActivoEdicion = 0;
+      var todasLasRecetas = [];
+      var pestanaActualGlobal = 'perfil';
+      
+      var frasesMetas = ["¡Tus primeros -5Kg !", "¡Ya van -10 Kg !", "¡Ahora son -15 Kg !", "¡Llegamos a -20 Kg !", "¡Felicidades son -25 Kg !", "¡Brutal -30 Kg !", "¡Nuevo hito -35 Kg !", "¡Fantastico -40 Kg !", "¡Y alcanzamos -45 Kg !", "¡Guaoo -50 Kg !", "¡Crack -55 Kg !", "¡Increible -60 Kg !"];
+
+      function iniciarSesion() {
+        var email = document.getElementById('login-email').value;
+        var pass = document.getElementById('login-password').value;
+        if(!email || !pass) { alert("Por favor ingresa correo y contraseña"); return; }
+        
+        firebase.auth().signInWithEmailAndPassword(email, pass)
+          .catch((error) => {
+            alert("Error al iniciar sesión: " + error.message);
+          });
+      }
+      
+      // NUEVA FUNCIÓN: INICIAR SESIÓN CON GOOGLE
+      function iniciarSesionConGoogle() {
+        var provider = new firebase.auth.GoogleAuthProvider();
+        
+        firebase.auth().signInWithPopup(provider)
+          .then((result) => {
+            var user = result.user;
+            var uid = user.uid;
+            var email = user.email;
+            var nombre = user.displayName || "Usuario Google";
+
+            // Reutilizamos tu función existente en el backend para asegurarnos 
+            // de que si es su primera vez, se cree su registro en la hoja "DB_Perfiles"
+            llamarBackend('registrarTelefono', { telefono: "", email: email }, function() {
+              // Al terminar, el onAuthStateChanged detectará al usuario y abrirá el dashboard automáticamente
+            });
+            
+          }).catch((error) => {
+            alert("Error al autenticar con Google: " + error.message);
+          });
+      }
+
+      function abrirModalRegistro() {
+        document.getElementById('login-modal').style.display = 'none';
+        document.getElementById('register-modal').style.display = 'flex';
+      }
+
+      function cerrarModalRegistro() {
+        document.getElementById('register-modal').style.display = 'none';
+        document.getElementById('login-modal').style.display = 'flex';
+      }
+
+      function crearCuentaFirebase() {
+        var email = document.getElementById('reg-email').value;
+        var pass = document.getElementById('reg-password').value;
+        var tel = document.getElementById('reg-telefono').value;
+        if(!email || !pass || !tel) { alert("Ingresa correo, contraseña y teléfono"); return; }
+
+        firebase.auth().createUserWithEmailAndPassword(email, pass)
+          .then((userCred) => {
+             var uid = userCred.user.uid;
+             llamarBackend('registrarTelefono', { telefono: tel, email: email }, function() {
+                 cerrarModalRegistro();
+             });
+          })
+          .catch((error) => {
+            alert("Error al registrarse: " + error.message);
+          });
+      }
+
+      function recuperarPassword() {
+        var email = document.getElementById('login-email').value;
+        if (!email) {
+          alert("Por favor, ingresa tu correo electrónico primero para recuperar tu contraseña.");
+          return;
+        }
+        
+        firebase.auth().sendPasswordResetEmail(email)
+          .then(() => {
+            alert("¡Correo enviado con éxito! Revisa tu bandeja de entrada o spam para restablecer tu contraseña.");
+          })
+          .catch((error) => {
+            alert("Error al enviar el correo: " + error.message);
+          });
+      }
+
+      function cerrarSesionFirebase() {
+        firebase.auth().signOut().then(() => {
+          location.reload();
+        }).catch((error) => {
+          console.error("Error al cerrar sesión", error);
+        });
+      }
+
+      firebase.auth().onAuthStateChanged(function(user) {
+        if (user) {
+          currentUserId = user.uid;
+          document.getElementById('login-modal').style.display = 'none';
+          document.getElementById('register-modal').style.display = 'none';
+          document.querySelector('.sidebar').style.display = 'flex';
+          document.querySelector('.main-content').style.display = 'block';
+          cargarDatosPrincipales();
+        } else {
+          currentUserId = "";
+          document.querySelector('.sidebar').style.display = 'none';
+          document.querySelector('.main-content').style.display = 'none';
+          document.getElementById('login-modal').style.display = 'flex';
+        }
+      });
+
+      function formatoPunto(valor) { if (!valor && valor !== 0) return "--"; return valor.toString().replace(/,/g, "."); }
+      function soloNumeros(valor) { if (!valor && valor !== 0) return ""; return valor.toString().replace(/[^0-9.,-]/g, '').replace(/,/g, ".").trim(); }
+      function convertirEnlaceDrive(url) { var regex = /drive\.google\.com\/(?:file\/d\/|open\?id=)([-_a-zA-Z0-9]+)/; var match = (url||"").match(regex); if (match && match[1]) { return "https://drive.google.com/thumbnail?id=" + match[1] + "&sz=w1000"; } return url; }
+
+      function obtenerFechaHoyFormato() {
+        var hoy = new Date();
+        var d = String(hoy.getDate()).padStart(2, '0');
+        var m = String(hoy.getMonth() + 1).padStart(2, '0');
+        var y = hoy.getFullYear();
+        return d + '/' + m + '/' + y;
+      }
+
+      function obtenerMesAnio(fechaStr) {
+        if (!fechaStr || fechaStr === "--" || !fechaStr.includes('/')) return "";
+        var p = fechaStr.split('/');
+        if (p.length < 3) return "";
+        var mIndex = parseInt(p[1], 10) - 1;
+        var meses = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO", "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];
+        if (mIndex >= 0 && mIndex < 12) {
+          var anio = p[2].length === 4 ? p[2].substring(2, 4) : p[2];
+          return meses[mIndex] + " " + anio;
+        }
+        return "";
+      }
+
+      function pintarFotoCaja(idElemento, urlRaw, texto) {
+        var el = document.getElementById(idElemento); var urlFinal = convertirEnlaceDrive(urlRaw); 
+        if (urlFinal && urlFinal.toString().startsWith("http")) { el.innerHTML = '<img src="' + urlFinal + '" style="width:100%; height:100%; object-fit:contain;">'; el.style.border = "none"; } 
+        else { el.innerHTML = '<span>📷</span><br>' + texto; el.style.border = "2px dashed #303645"; }
+      }
+
+      function llamarBackend(action, datos, callback) {
+        fetch(SCRIPT_URL, {
+          method: 'POST',
+          body: JSON.stringify({ action: action, userId: currentUserId, datos: datos })
+        })
+        .then(response => {
+          if (!response.ok) throw new Error("Error de red o servidor de Google");
+          return response.json();
+        })
+        .then(result => {
+          if (result.error) { 
+            alert("Error del servidor: " + result.error); 
+            detenerCargaUI(result.error);
+            return; 
+          }
+          if (callback) callback(result);
+        })
+        .catch(err => {
+          console.error("Error de conexión:", err);
+          alert("Fallo de conexión. Verifica que la URL del script sea pública y tengas internet.");
+          detenerCargaUI("Error de conexión con la base de datos.");
+        });
+      }
+
+      function detenerCargaUI(mensaje) {
+        document.getElementById('val-nombre').innerText = "Error de Carga";
+        var mensajeError = '<div style="text-align:center; color:#FF4500; padding: 20px; font-weight:bold;">' + mensaje + '</div>';
+        if(document.getElementById('contenedor-metas')) document.getElementById('contenedor-metas').innerHTML = mensajeError;
+        if(document.getElementById('contenedor-meses')) document.getElementById('contenedor-meses').innerHTML = mensajeError;
+        if(document.getElementById('tabla-diario-body')) document.getElementById('tabla-diario-body').innerHTML = '<tr><td colspan="9">' + mensajeError + '</td></tr>';
+      }
+
+      function cambiarPestana(pestana) {
+        pestanaActualGlobal = pestana;
+        document.getElementById('pestana-perfil').style.display = 'none';
+        document.getElementById('pestana-diario').style.display = 'none';
+        document.getElementById('pestana-calculadoras').style.display = 'none';
+        document.getElementById('pestana-recetas').style.display = 'none';
+        document.getElementById('pestana-misfinanzas').style.display = 'none';
+        document.getElementById('pestana-finanzas').style.display = 'none';
+        document.getElementById('pestana-usuarios').style.display = 'none';
+        
+        document.getElementById('btn-menu-perfil').classList.remove('active');
+        document.getElementById('btn-menu-diario').classList.remove('active');
+        document.getElementById('btn-menu-calculadoras').classList.remove('active');
+        document.getElementById('btn-menu-recetas').classList.remove('active');
+        if(document.getElementById('btn-menu-misfinanzas')) document.getElementById('btn-menu-misfinanzas').classList.remove('active');
+        if(document.getElementById('btn-menu-finanzas')) document.getElementById('btn-menu-finanzas').classList.remove('active');
+        if(document.getElementById('btn-menu-usuarios')) document.getElementById('btn-menu-usuarios').classList.remove('active');
+        
+        if (document.getElementById('btn-menu-' + pestana)) {
+           document.getElementById('btn-menu-' + pestana).classList.add('active');
+        }
+        document.getElementById('pestana-' + pestana).style.display = 'block';
+
+        var statsContainer = document.getElementById('user-stats-container');
+        var nombreEl = document.getElementById('val-nombre');
+        
+        if (pestana === 'perfil') {
+          nombreEl.innerText = misDatosGlobales.nombre || "Usuario";
+          statsContainer.innerHTML = 
+            '<div class="stats-layout">' +
+              '<div class="stats-col stats-left">' +
+                '<span>Registro: <strong>' + (misDatosGlobales.fechaReg||"--") + '</strong></span>' +
+                '<span>F/ Nac.: <strong>' + (misDatosGlobales.fechaNac||"--") + '</strong></span>' +
+                '<span>Edad: <strong>' + (misDatosGlobales.edad||"--") + ' años</strong></span>' +
+              '</div>' +
+              '<div class="stats-col stats-right">' +
+                '<span>P. Inicial: <strong>' + (soloNumeros(misDatosGlobales.pesoInicial)?soloNumeros(misDatosGlobales.pesoInicial)+" kg":"--") + '</strong></span>' +
+                '<span>Talla: <strong>' + (soloNumeros(misDatosGlobales.talla)?soloNumeros(misDatosGlobales.talla)+" mts":"--") + '</strong></span>' +
+                '<span>P. Ideal: <strong>' + (soloNumeros(misDatosGlobales.pesoIdeal)?soloNumeros(misDatosGlobales.pesoIdeal)+" kg":"--") + '</strong></span>' +
+              '</div>' +
+              '<div class="stats-center">' +
+                '<span>Género: <strong>' + (misDatosGlobales.genero||"--") + '</strong> <button class="btn-editar" onclick="abrirEditor()">✏️</button></span>' +
+              '</div>' +
+            '</div>';
+        } else if (pestana === 'usuarios') {
+          nombreEl.innerText = "Panel de Administración";
+          statsContainer.innerHTML = '<span>Gestión de accesos y cuentas</span>';
+          cargarUsuarios();
+        } else if (pestana === 'finanzas') {
+          nombreEl.innerText = "Panel de Finanzas";
+          statsContainer.innerHTML = '<span>Control de pagos e ingresos</span>';
+          cargarPanelFinanzas();
+        } else {
+          nombreEl.innerText = misDatosGlobales.nombre || "Usuario";
+          statsContainer.innerHTML = '<span>Fecha de Hoy: <strong style="color: #00FF7F;">' + obtenerFechaHoyFormato() + '</strong></span>';
+        }
+
+        if (pestana === 'calculadoras') {
+            var tallaUsr = soloNumeros(misDatosGlobales.talla);
+            if (tallaUsr) document.getElementById('calc-talla').value = tallaUsr;
+            
+            var pesoUsr = soloNumeros(misDatosGlobales.peso);
+            if (!pesoUsr || pesoUsr === "") pesoUsr = soloNumeros(misDatosGlobales.pesoInicial);
+            if (pesoUsr) document.getElementById('calc-peso').value = pesoUsr;
+            
+            if (misDatosGlobales.genero) document.getElementById('calc-genero').value = misDatosGlobales.genero;
+            
+            calcularIMC();
+        }
+      }
+
+      function toggleMes(mesNum) {
+        var cuerpo = document.getElementById('mes-cuerpo-' + mesNum); var barra = document.getElementById('mes-barra-' + mesNum); var btn = document.getElementById('btn-toggle-' + mesNum);
+        if (cuerpo.classList.contains('abierto')) { cuerpo.classList.remove('abierto'); barra.classList.remove('abierto'); btn.innerText = "⬇️ Mostrar"; } 
+        else { cuerpo.classList.add('abierto'); barra.classList.add('abierto'); btn.innerText = "⬆️ Ocultar"; }
+      }
+
+      function calcularIMC() {
+        var genero = document.getElementById('calc-genero').value;
+        var tallaStr = document.getElementById('calc-talla').value.replace(',', '.');
+        var pesoStr = document.getElementById('calc-peso').value.replace(',', '.');
+        var talla = parseFloat(tallaStr); var peso = parseFloat(pesoStr);
+        if (!talla || !peso || !genero) return;
+        
+        var tallaCm = talla * 100; var pesoIdeal = 0;
+        if (genero === 'Hombre') { pesoIdeal = tallaCm - 100 - ((tallaCm - 150) / 4); } else { pesoIdeal = tallaCm - 100 - ((tallaCm - 150) / 2.5); }
+        document.getElementById('res-peso-ideal').innerText = pesoIdeal.toFixed(1) + " kg";
+        
+        var imc = peso / (talla * talla); document.getElementById('res-imc').innerText = imc.toFixed(1);
+        var estado = ""; var color = "";
+        if (imc < 18.5) { estado = "Bajo Peso"; color = "#FFA500"; } else if (imc <= 24.9) { estado = "Normal"; color = "#00FF00"; } else if (imc <= 29.9) { estado = "Sobrepeso"; color = "#00FFFF"; } else if (imc <= 34.9) { estado = "Obesidad Grado 1"; color = "#FF00FF"; } else if (imc <= 39.9) { estado = "Obesidad Grado 2"; color = "#FF4500"; } else { estado = "Obesidad Grado 3"; color = "#FF0000"; } 
+        var elEstado = document.getElementById('res-estado'); elEstado.innerText = estado; elEstado.style.color = color;
+      }
+
+      function filtrarRecetasUI(categoriaFiltro) {
+        var botones = document.getElementsByClassName('btn-filtro');
+        for(var b=0; b<botones.length; b++) { botones[b].classList.remove('activo'); }
+        document.getElementById('filtro-' + categoriaFiltro).classList.add('activo');
+
+        var html = "";
+        for(var i=0; i<todasLasRecetas.length; i++) {
+           var r = todasLasRecetas[i];
+           if (categoriaFiltro !== "TODOS" && r.categoria !== categoriaFiltro) continue;
+           
+           var urlFoto = convertirEnlaceDrive(r.fotoRaw);
+           var divFoto = '<div class="receta-foto"><span>📷</span><br>Plato sin foto</div>';
+           if (urlFoto && urlFoto.toString().startsWith("http")) { divFoto = '<div class="receta-foto"><img src="' + urlFoto + '" loading="lazy"></div>'; }
+
+           var claseTagCat = "tag-cat-" + r.categoria.replace(/\s+/g, '');
+           
+           html += '<div class="receta-card">';
+           if (misDatosGlobales.isSuperAdmin) {
+             html += '<button class="btn-edit-receta-card" onclick="abrirModalReceta(' + i + ')" title="Editar Receta">✏️</button>';
+           }
+           html += divFoto;
+           html += '  <div class="receta-info">';
+           html += '    <h3 class="receta-titulo">' + r.nombre + '</h3>';
+           html += '    <div class="receta-tags">';
+           html += '       <span class="receta-tag ' + claseTagCat + '">' + r.categoria + '</span>';
+           if(r.calorias) html += '       <span class="receta-tag tag-cal">' + r.calorias + '</span>';
+           html += '    </div>';
+           html += '    <div class="receta-bloque"><div class="receta-sub">Ingredientes</div><div class="receta-texto">' + r.ingredientes + '</div></div>';
+           html += '    <div class="receta-bloque"><div class="receta-sub">Preparación</div><div class="receta-texto">' + r.preparacion + '</div></div>';
+           html += '  </div>';
+           html += '</div>';
+        }
+        
+        if(html === "") html = '<div style="text-align:center; color:#8B98A5; padding:30px; grid-column: 1 / -1;">No hay recetas en esta categoría.</div>';
+        document.getElementById('contenedor-recetas').innerHTML = html;
+      }
+
+      function cargarDatosPrincipales() {
+        var userEmail = firebase.auth().currentUser ? firebase.auth().currentUser.email : "";
+        
+        llamarBackend('getDashboardData', { email: userEmail }, function(datos) {
+          
+          if (datos.isPendiente) {
+            document.getElementById('login-modal').style.display = 'flex';
+            document.querySelector('.modal-box').innerHTML = '<h2>⏳ Cuenta en Revisión</h2><p>Tu cuenta ha sido registrada correctamente. Actualmente está pendiente de autorización por parte del administrador.</p><button class="btn-cerrar" onclick="cerrarSesionFirebase()">Volver / Cerrar Sesión</button>';
+            document.querySelector('.sidebar').style.display = 'none';
+            document.querySelector('.main-content').style.display = 'none';
+            return;
+          }
+
+          if (datos.isBloqueado) {
+            document.getElementById('login-modal').style.display = 'flex';
+            document.querySelector('.modal-box').innerHTML = '<h2>🚫 Cuenta Suspendida</h2><p>Tu acceso a la plataforma se encuentra pausado temporalmente. Por favor, comunícate con soporte o el administrador para más detalles.</p><button class="btn-cerrar" onclick="cerrarSesionFirebase()">Volver / Cerrar Sesión</button>';
+            document.querySelector('.sidebar').style.display = 'none';
+            document.querySelector('.main-content').style.display = 'none';
+            return;
+          }
+          
+          misDatosGlobales = datos;
+          
+          if (!datos.pesoInicial || !datos.talla || datos.pesoInicial === "") { 
+            document.getElementById('onboarding-modal').style.display = 'flex'; 
+          }
+          
+          var avEl = document.getElementById('sidebar-avatar');
+          var avUrl = convertirEnlaceDrive(datos.avatarUrl);
+          if (avUrl && avUrl.toString().startsWith("http")) {
+            avEl.innerHTML = '<img src="' + avUrl + '">';
+            avEl.style.border = "2px solid #00FF7F";
+          } else {
+            avEl.innerHTML = '<span>​👩‍💻</span>';
+          }
+
+          if(datos.appLogoUrl) {
+            var logoUrlFinal = convertirEnlaceDrive(datos.appLogoUrl);
+            
+            // Se mantiene el texto original FITNESS PRO y solo se agrega la funcionalidad de cambiar icono al texto si es SuperAdmin
+            if (datos.isSuperAdmin) {
+                var textLogo = document.getElementById('app-logo-text');
+                textLogo.style.cursor = 'pointer';
+                textLogo.setAttribute('onclick', 'cambiarIconoApp()');
+                textLogo.title = 'Clic para cambiar icono';
+            }
+            
+            var link = document.querySelector("link[rel*='icon']") || document.createElement('link');
+            link.type = 'image/x-icon';
+            link.rel = 'shortcut icon';
+            link.href = logoUrlFinal;
+            document.getElementsByTagName('head')[0].appendChild(link);
+          }
+
+          var btnRecetaContainer = document.getElementById('contenedor-btn-receta');
+          if(btnRecetaContainer) {
+            btnRecetaContainer.style.display = datos.isSuperAdmin ? 'block' : 'none';
+          }
+          
+          var btnEditCalcFotos = document.getElementById('btn-edit-calc-fotos');
+          if(btnEditCalcFotos) {
+            btnEditCalcFotos.style.display = datos.isSuperAdmin ? 'inline-block' : 'none';
+          }
+
+          // Permisos de SuperAdmin y Admin Regular
+          if(datos.isAdmin || datos.isSuperAdmin) {
+             var tabUsuarios = document.getElementById('btn-menu-usuarios');
+             if(tabUsuarios) tabUsuarios.style.display = 'block';
+             
+             var tabFinanzas = document.getElementById('btn-menu-finanzas');
+             if(tabFinanzas) tabFinanzas.style.display = 'block';
+          }
+
+          cambiarPestana(pestanaActualGlobal);
+          
+          var pAct = soloNumeros(datos.peso); document.getElementById('val-peso').innerText = (pAct ? pAct + " kg" : "--");
+          var def = soloNumeros(datos.deficit); document.getElementById('val-deficit').innerText = (def ? def + " kcal" : "--");
+          var pObj = soloNumeros(datos.pesoObjetivo); document.getElementById('val-peso-obj').innerText = (pObj ? pObj + " kg" : "--");
+          
+          var evoCard = document.getElementById('val-evolucion');
+          var evoNum = parseFloat(formatoPunto(datos.evolucion));
+          if (evoNum > 0) { evoCard.style.color = "#FF0000"; evoCard.innerText = "+" + evoNum.toFixed(2) + " kg"; } 
+          else if (evoNum < 0) { evoCard.style.color = "#00FF7F"; evoCard.innerText = evoNum.toFixed(2) + " kg"; } 
+          else { evoCard.style.color = "#FFD700"; evoCard.innerText = "0.00 kg"; }
+          
+          if (datos.escalones) {
+            var htmlEscalones = "";
+            for (var i = 0; i < 12; i++) {
+              var num = i + 1; 
+              var escDato = datos.escalones[i]; 
+              var claseEstado = escDato.estado === "ALCANZADO" ? "logrado" : "pendiente";
+              
+              var fParts = (escDato.fecha || "").split('/');
+              var valDate = fParts.length === 3 ? fParts[2] + "-" + fParts[1] + "-" + fParts[0] : "";
+
+              htmlEscalones += '<div class="escalon-card ' + claseEstado + '" id="card-esc-' + num + '"><div class="escalon-info"><div class="escalon-titulo">Escalón ' + num + '</div><div class="escalon-sub">' + frasesMetas[i] + '</div><select class="escalon-select" id="esc-estado-' + num + '" onchange="actualizarEscalon(' + num + ')"><option value="">PENDIENTE</option><option value="ALCANZADO" ' + (escDato.estado === "ALCANZADO" ? "selected" : "") + '>ALCANZADO</option></select><div class="esc-grid"><div class="esc-col"><div class="esc-head">Fecha</div><div class="esc-val"><input type="date" class="esc-input" id="esc-fecha-' + num + '" onchange="actualizarEscalon(' + num + ')" value="' + valDate + '"></div></div><div class="esc-col"><div class="esc-head">Transcurridos</div><div class="esc-val">' + (escDato.dias !== "" ? escDato.dias : "--") + '</div></div></div></div>';
+              
+              var urlFoto = convertirEnlaceDrive(escDato.foto);
+              var modalUrlEscalon = (escDato.foto === "https://i.postimg.cc/XvjwD97P/Tu-foto-aqui.jpg") ? "" : (escDato.foto || "");
+              
+              htmlEscalones += '<div class="escalon-foto" onclick="abrirModalFotoEscalon(' + num + ', \'' + modalUrlEscalon.replace(/'/g, "\\'") + '\')"><img src="' + urlFoto + '"></div></div>'; 
+            }
+            document.getElementById('contenedor-metas').innerHTML = htmlEscalones;
+          }
+
+          if(datos.meses) {
+            var htmlMeses = "";
+            for(var m=0; m<12; m++) {
+              var md = datos.meses[m]; var numMes = md.mes; var cAbierto = numMes === 1 ? "abierto" : ""; var tBtn = numMes === 1 ? "⬆️ Ocultar" : "⬇️ Mostrar";
+              var textoFecha = numMes === 1 ? "Fecha de Registro:" : "Fecha de Medición:";
+
+              var mesAnioTexto = obtenerMesAnio(md.fechaMed);
+              var bloqueTituloMes = '<div style="display:flex; flex-direction:column; align-items:flex-start;"><div class="titulo-mes-barra">MES ' + numMes + '</div>' + '<div style="color: #00BFFF; font-size: 13px; font-weight: bold; margin-top: 4px; padding-left: 10px;">' + (mesAnioTexto || "REGISTRAR FECHA") + '</div>' + '</div>';
+
+              htmlMeses += '<div class="mes-acordeon" id="mes-caja-' + numMes + '"><div class="mes-header-bar ' + cAbierto + '" id="mes-barra-' + numMes + '"><div onclick="toggleMes(' + numMes + ')" style="flex:1; display:flex; gap:20px; align-items:center;">' + bloqueTituloMes + '<div class="fecha-mes-barra">' + textoFecha + ' <strong>' + (md.fechaMed || "--") + '</strong></div></div><div class="controles-mes"><button class="btn-toggle" id="btn-toggle-' + numMes + '" onclick="toggleMes(' + numMes + ')">' + tBtn + '</button><button class="btn-editar-mes" onclick="abrirModalMesUniversal(' + numMes + ')">✏️ Editar</button></div></div><div class="mes-cuerpo ' + cAbierto + '" id="mes-cuerpo-' + numMes + '"><div class="medidas-container"><div class="medidas-grid"><div class="medida-bloque"><div class="medida-label">Peso</div><div class="medida-valor special">' + formatoPunto(md.pesoColB) + '</div></div><div class="medida-bloque"><div class="medida-label">Dif. Obj.</div><div class="medida-valor special">' + formatoPunto(md.difObj) + '</div></div><div class="medida-bloque"><div class="medida-label">Cuello</div><div class="medida-valor">' + formatoPunto(md.med.cuello) + '</div></div><div class="medida-bloque"><div class="medida-label">Hombro</div><div class="medida-valor">' + formatoPunto(md.med.hombro) + '</div></div><div class="medida-bloque"><div class="medida-label">Pecho</div><div class="medida-valor">' + formatoPunto(md.med.pecho) + '</div></div><div class="medida-bloque"><div class="medida-label">Cintura</div><div class="medida-valor">' + formatoPunto(md.med.cintura) + '</div></div><div class="medida-bloque"><div class="medida-label">Brazo Izq</div><div class="medida-valor">' + formatoPunto(md.med.brazoI) + '</div></div><div class="medida-bloque"><div class="medida-label">Brazo Der</div><div class="medida-valor">' + formatoPunto(md.med.brazoD) + '</div></div><div class="medida-bloque"><div class="medida-label">Antebrazo Izq</div><div class="medida-valor">' + formatoPunto(md.med.anteI) + '</div></div><div class="medida-bloque"><div class="medida-label">Antebrazo Der</div><div class="medida-valor">' + formatoPunto(md.med.anteD) + '</div></div><div class="medida-bloque"><div class="medida-label">Circ. Abdominal</div><div class="medida-valor">' + formatoPunto(md.med.circAb) + '</div></div><div class="medida-bloque"><div class="medida-label">Muslo Izq</div><div class="medida-valor">' + formatoPunto(md.med.musloI) + '</div></div><div class="medida-bloque"><div class="medida-label">Muslo Der</div><div class="medida-valor">' + formatoPunto(md.med.musloD) + '</div></div><div class="medida-bloque"><div class="medida-label">Pantorrilla Izq</div><div class="medida-valor">' + formatoPunto(md.med.pantI) + '</div></div><div class="medida-bloque"><div class="medida-label">Pantorrilla Der</div><div class="medida-valor">' + formatoPunto(md.med.pantD) + '</div></div><div class="medida-bloque"><div class="medida-label">Cadera</div><div class="medida-valor">' + formatoPunto(md.med.cadera) + '</div></div></div></div>';
+              
+              var uF = convertirEnlaceDrive(md.fotos.frente); 
+              var uE = convertirEnlaceDrive(md.fotos.espalda); 
+              var uPD = convertirEnlaceDrive(md.fotos.perfilDer); 
+              var uPI = convertirEnlaceDrive(md.fotos.perfilIzq);
+              
+              htmlMeses += '<div class="fotos-iniciales-container">' + 
+                '<div class="foto-espacio"><img src="'+uF+'"></div>' + 
+                '<div class="foto-espacio"><img src="'+uE+'"></div>' + 
+                '<div class="foto-espacio"><img src="'+uPD+'"></div>' + 
+                '<div class="foto-espacio"><img src="'+uPI+'"></div>' + 
+                '</div></div></div>';
+            }
+            document.getElementById('contenedor-meses').innerHTML = htmlMeses;
+          }
+
+          if(datos.diario) {
+            var htmlDiario = "";
+            for(var d=0; d<datos.diario.length; d++) {
+              var dia = datos.diario[d]; if(!dia.fecha) continue; 
+              var cDif = "", cProg = ""; var bgNotas = "", cNotas = "color: #ADFF2F;"; 
+              var numDif = parseFloat((dia.dif || "").toString().replace(',', '.')); var numProg = parseFloat((dia.progreso || "").toString().replace(',', '.'));
+              if(numDif > 0) cDif = "color: #FF4500; font-weight:bold;"; else if(numDif < 0) cDif = "color: #00FF7F; font-weight:bold;"; else if(dia.dif !== "") cDif = "color: #FFD700; font-weight:bold;";
+              if(numProg > 0) cProg = "color: #FF4500; font-weight:bold;"; else if(numProg < 0) cProg = "color: #00FF7F; font-weight:bold;"; else if(dia.progreso !== "") cProg = "color: #FFD700; font-weight:bold;";
+              
+              var notasStr = dia.notas || "";
+              if(notasStr.includes("BALANCE SEMANAL")) { 
+                  var numBal = parseFloat(notasStr.replace(/[^0-9.,-]/g, '').replace(',', '.')); 
+                  bgNotas = ""; 
+                  if(numBal > 0) cNotas = "color: #FF0000; font-weight:bold;"; 
+                  else if(numBal < 0) cNotas = "color: #00FF7F; font-weight:bold;"; 
+                  else cNotas = "color: #FFD700; font-weight:bold;"; 
+              }
+              else if(notasStr.includes("MED/FOT")) { bgNotas = "background-color: #FFA500;"; cNotas = "color: #FFF; font-weight:bold;"; }
+              else if(notasStr.includes("MEDICION") && notasStr.includes("SEM. 38")) { bgNotas = "background-color: #FFA500;"; cNotas = "color: #FFF; font-weight:bold;"; }
+              else if(notasStr.includes("MEDICION")) { bgNotas = "background-color: #FF00FF;"; cNotas = "color: #FFF; font-weight:bold;"; }
+              else if(notasStr.includes("SEMANA")) { bgNotas = "background-color: #FFFF00;"; cNotas = "color: #000; font-weight:bold;"; }
+
+              var estiloPeso = dia.peso ? "color: #FFD700;" : "color: #FFF;";
+              
+              var cEnergia = "color: #8B98A5;"; 
+              if(dia.energia == "1") cEnergia = "color: #FF0000; font-weight:bold;"; 
+              else if(dia.energia == "2") cEnergia = "color: #FF4500; font-weight:bold;"; 
+              else if(dia.energia == "3") cEnergia = "color: #FFD700; font-weight:bold;"; 
+              else if(dia.energia == "4") cEnergia = "color: #ADFF2F; font-weight:bold;"; 
+              else if(dia.energia == "5") cEnergia = "color: #00FF7F; font-weight:bold;"; 
+              
+              var camVal = (dia.caminata || "").toUpperCase().trim();
+              var cCaminata = "#8B98A5";
+              if(camVal === "NO") cCaminata = "#FF0000"; 
+              else if(camVal === "15 MIN") cCaminata = "#8B0000"; 
+              else if(camVal === "30 MIN") cCaminata = "#1E90FF"; 
+              else if(camVal === "45 MIN") cCaminata = "#00FFFF"; 
+              else if(camVal === "1 HORA") cCaminata = "#FFFF00"; 
+              else if(camVal === "1H 30 MIN") cCaminata = "#00FF00"; 
+              else if(camVal === "2 HORAS") cCaminata = "#FFA500"; 
+
+              var strCaminata = dia.caminata ? dia.caminata : '--';
+              var strEnergia = dia.energia ? ('⚡ ' + dia.energia) : '--';
+              var celdaCaminataEnergia = '<span style="color:' + cCaminata + '; font-weight:bold;">' + strCaminata + '</span><br><span style="' + cEnergia + ' font-size:11px;">' + strEnergia + '</span>';
+
+              var cAgua = "color: #8B98A5;"; if(dia.agua.includes("4 VASOS")) cAgua = "color: #FF0000; font-weight:bold;"; else if(dia.agua.includes("6 VASOS")) cAgua = "color: #FF4500; font-weight:bold;"; else if(dia.agua.includes("1 LITRO")) cAgua = "color: #ADFF2F; font-weight:bold;"; else if(dia.agua.includes("2 LITROS")) cAgua = "color: #00BFFF; font-weight:bold;"; else if(dia.agua.includes("3 LITROS") || dia.agua.includes("4 LITROS") || dia.agua.includes("5+ LITROS")) cAgua = "color: #00FF7F; font-weight:bold;"; 
+              
+              var statUpper = (dia.presionStat || "").toUpperCase().trim();
+              var cPresionColor = "#8B98A5";
+              if(statUpper === "BAJA") cPresionColor = "#00BFFF";
+              else if(statUpper === "NORMAL") cPresionColor = "#00FF00"; 
+              else if(statUpper === "ELEVADA") cPresionColor = "#FFA500"; 
+              else if(statUpper === "ALTA") cPresionColor = "#FF6347"; 
+              else if(statUpper === "ETAPA 2 ALTA") cPresionColor = "#FF0000"; 
+
+              var rawPresion = (dia.presion || "").toString().replace(/mmhg/gi, '').replace(/mm/gi, '').trim();
+              var cPresionValor = rawPresion ? "color: #FFA500; font-weight:bold;" : "color: #8B98A5;";
+              var presionHtml = rawPresion ? ('<span style="' + cPresionValor + '">' + rawPresion + ' mmHg</span><br><span style="font-size:10px; color:' + cPresionColor + '; font-weight:bold; text-transform:uppercase;">' + dia.presionStat + '</span>') : '--';
+              
+              var notasSeguras = notasStr.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+              
+              htmlDiario += '<tr><td style="color:#FFFFFF;">' + dia.fecha + '</td><td style="font-weight:bold; ' + estiloPeso + '">' + (dia.peso ? dia.peso : '--') + '</td><td style="' + cDif + '">' + (dia.dif ? dia.dif : '--') + '</td><td style="' + cProg + '">' + (dia.progreso ? dia.progreso : '--') + '</td><td>' + celdaCaminataEnergia + '</td><td style="' + cAgua + '">' + (dia.agua || '--') + '</td><td>' + presionHtml + '</td><td style="' + bgNotas + cNotas + ' border-radius:4px;">' + notasStr + '</td><td><button class="btn-editar" style="font-size:14px; margin:0;" onclick="abrirModalDiario(' + dia.fila + ', \'' + dia.fecha + '\', \'' + dia.peso + '\', \'' + (dia.energia||'') + '\', \'' + (dia.caminata||'') + '\', \'' + (dia.agua||'') + '\', \'' + rawPresion + '\', \'' + notasSeguras + '\')">✏️</button></td></tr>';
+            }
+            document.getElementById('tabla-diario-body').innerHTML = htmlDiario;
+          }
+
+          if (datos.calcFotos) { 
+            pintarFotoCaja('calc-foto-1', datos.calcFotos.img1, 'B2 (Pesas)'); 
+            pintarFotoCaja('calc-foto-2', datos.calcFotos.img2, 'E1 (Peso Ideal)'); 
+            pintarFotoCaja('calc-foto-3', datos.calcFotos.img3, 'F1 (Vasos de Agua)'); 
+            pintarFotoCaja('calc-foto-4', datos.calcFotos.img4, 'G13 (Contraparte)'); 
+            pintarFotoCaja('calc-foto-5', datos.calcFotos.img5, 'G1 (Nueva Foto)'); 
+          }
+
+          // Rellenar Finanzas del Cliente (Vista Normal)
+          if(datos.finanzasCli) {
+            document.getElementById('cli-fin-plan').innerText = datos.finanzasCli.plan;
+            document.getElementById('cli-fin-prox').innerText = datos.finanzasCli.proximo;
+            var elEstado = document.getElementById('cli-fin-estado');
+            elEstado.innerText = datos.finanzasCli.estado;
+            elEstado.style.color = (datos.finanzasCli.estado === "VENCIDO") ? "#FF0000" : (datos.finanzasCli.estado === "AL DÍA" ? "#00FF7F" : "#8B98A5");
+          }
+          if(datos.historialPagos) {
+            var htmlPagos = "";
+            for(var p=0; p<datos.historialPagos.length; p++) {
+               var hp = datos.historialPagos[p];
+               var link = hp.recibo ? '<a href="'+hp.recibo+'" target="_blank" style="color:#00FF7F; font-weight:bold;">Ver Recibo</a>' : '--';
+               htmlPagos += '<tr><td style="color:#FFF;">'+hp.fecha+'</td><td style="color:#00BFFF; font-weight:bold;">'+hp.periodo+'</td><td>'+hp.plan+'</td><td>'+hp.metodo+'</td><td style="color:#FFD700; font-weight:bold;">'+(hp.costo ? '$'+hp.costo : '--')+'</td><td>'+link+'</td></tr>';
+            }
+            if(htmlPagos === "") htmlPagos = '<tr><td colspan="6" style="text-align:center; padding:30px;">No tienes pagos registrados aún.</td></tr>';
+            document.getElementById('tabla-cli-pagos').innerHTML = htmlPagos;
+          }
+
+          var pStatUpper = (datos.presionEstado || "").toUpperCase().trim();
+          var pColorCalc = "#8B98A5";
+          if(pStatUpper === "BAJA") pColorCalc = "#00BFFF";
+          else if(pStatUpper === "NORMAL") pColorCalc = "#00FF00"; 
+          else if(pStatUpper === "ELEVADA") pColorCalc = "#FFA500"; 
+          else if(pStatUpper === "ALTA") pColorCalc = "#FF6347"; 
+          else if(pStatUpper === "ETAPA 2 ALTA") pColorCalc = "#FF0000"; 
+          
+          var calcRawPresion = (datos.presionActual || "").toString().replace(/mmhg/gi, '').replace(/mm/gi, '').trim();
+          document.getElementById('res-presion').innerText = calcRawPresion ? calcRawPresion + " mmHg" : "--";
+          
+          var elPStat = document.getElementById('res-presion-estado');
+          elPStat.innerText = datos.presionEstado || "--";
+          elPStat.style.color = pColorCalc;
+
+          var camUpper = (datos.ultimaCaminata || "").toUpperCase().trim();
+          var cCamCalc = "#8B98A5";
+          if(camUpper === "NO") cCamCalc = "#FF0000";
+          else if(camUpper === "15 MIN") cCamCalc = "#8B0000";
+          else if(camUpper === "30 MIN") cCamCalc = "#1E90FF";
+          else if(camUpper === "45 MIN") cCamCalc = "#00FFFF";
+          else if(camUpper === "1 HORA") cCamCalc = "#FFFF00";
+          else if(camUpper === "1H 30 MIN") cCamCalc = "#00FF00";
+          else if(camUpper === "2 HORAS") cCamCalc = "#FFA500";
+          
+          var elCam = document.getElementById('res-caminata');
+          elCam.innerText = datos.ultimaCaminata || "--";
+          elCam.style.color = cCamCalc;
+
+          var agUpper = (datos.ultimoAgua || "").toUpperCase().trim();
+          var cAgCalc = "#8B98A5";
+          if(agUpper.includes("4 VASOS")) cAgCalc = "#FF0000";
+          else if(agUpper.includes("6 VASOS")) cAgCalc = "#FF4500";
+          else if(agUpper.includes("1 LITRO")) cAgCalc = "#ADFF2F";
+          else if(agUpper.includes("2 LITROS")) cAgCalc = "#00BFFF";
+          else if(agUpper.includes("3 LITROS") || agUpper.includes("4 LITROS") || agUpper.includes("5+ LITROS")) cAgCalc = "#00FF7F"; 
+          
+          var elAgua = document.getElementById('res-agua');
+          elAgua.innerText = datos.ultimoAgua || "--";
+          elAgua.style.color = cAgCalc;
+
+          if(datos.recetas) {
+            todasLasRecetas = datos.recetas;
+            filtrarRecetasUI('TODOS');
+          }
+        });
+      }
+
+      function cargarUsuarios() {
+        llamarBackend('getUsersList', {}, function(users) {
+          var html = "";
+          for(var i=0; i<users.length; i++){
+            var u = users[i];
+            var colEstado = u.estado === 'Pendiente' ? '#FFD700' : (u.estado === 'Bloqueado' ? '#FF4500' : (u.estado === 'Admin' ? '#00BFFF' : '#00FF7F'));
+            html += '<tr>' +
+              '<td style="color:#8B98A5;">' + u.uid.substring(0,8) + '...</td>' +
+              '<td style="color:#FFF; font-weight:bold;">' + (u.nombre || "Usuario Nuevo") + '</td>' +
+              '<td style="color:#00BFFF;">' + (u.email || "N/A") + '</td>' +
+              '<td><select onchange="cambiarEstadoUser(\'' + u.uid + '\', this.value)" class="modal-select" style="margin:0; width:130px; font-weight:bold; color:'+colEstado+';">' + 
+              '<option style="color:#FFD700;" value="Pendiente" ' + (u.estado==='Pendiente'?'selected':'') + '>Pendiente</option>' +
+              '<option style="color:#00FF7F;" value="Autorizado" ' + (u.estado==='Autorizado'?'selected':'') + '>Autorizado</option>' +
+              '<option style="color:#00BFFF;" value="Admin" ' + (u.estado==='Admin'?'selected':'') + '>Admin</option>' +
+              '<option style="color:#FF4500;" value="Bloqueado" ' + (u.estado==='Bloqueado'?'selected':'') + '>Bloqueado</option>' +
+              '</select></td>' +
+              '<td><button class="btn-cerrar" style="color:#FF0000; border-color:#FF0000; margin:0;" onclick="eliminarUser(\'' + u.uid + '\')">🗑️ Eliminar</button></td>' +
+              '</tr>';
+          }
+          if(users.length === 0) html = '<tr><td colspan="5" style="text-align:center; padding:30px;">No hay usuarios registrados.</td></tr>';
+          document.getElementById('tabla-usuarios-body').innerHTML = html;
+        });
+      }
+
+      function cambiarEstadoUser(uid, estado) {
+        llamarBackend('cambiarEstadoUser', {uid: uid, estado: estado}, function(){
+          cargarUsuarios();
+        });
+      }
+
+      function eliminarUser(uid) {
+        if(confirm("⚠ PRECAUCIÓN: ¿Estás seguro que deseas ELIMINAR todo el historial y base de datos de este usuario en Google Sheets? Esta acción es irreversible.")) {
+          llamarBackend('eliminarUser', {uid: uid}, function(){
+            cargarUsuarios();
+          });
+        }
+      }
+
+      function actualizarEscalon(numero) { 
+        var estado = document.getElementById('esc-estado-' + numero).value; 
+        var fechaRaw = document.getElementById('esc-fecha-' + numero).value; 
+        var fechaEnviar = fechaRaw;
+        if (fechaRaw && fechaRaw.includes('-')) {
+            var p = fechaRaw.split('-');
+            fechaEnviar = p[2] + '/' + p[1] + '/' + p[0];
+        }
+        llamarBackend('guardarEscalon', { numero: numero, estado: estado, fecha: fechaEnviar }, function() { 
+          cargarDatosPrincipales(); 
+        }); 
+      }
+      
+      function abrirModalFotoEscalon(numero, urlActual) { escalonFotoActivo = numero; document.getElementById('tit-foto-esc').innerText = "Foto del Escalón " + numero; document.getElementById('mod-foto-esc-url').value = urlActual; document.getElementById('modal-foto-escalon').style.display = 'flex'; }
+      function cerrarModalFotoEscalon() { document.getElementById('modal-foto-escalon').style.display = 'none'; }
+      function guardarFotoEscalon() { 
+        var url = document.getElementById('mod-foto-esc-url').value; 
+        var btn = document.getElementById('btn-save-foto-esc'); 
+        btn.innerText = "⏳ Guardando..."; 
+        btn.disabled = true; 
+        llamarBackend('guardarFotoEscalonBackend', { numero: escalonFotoActivo, url: url }, function() { 
+          btn.innerText = "💾 Guardar"; 
+          btn.disabled = false;
+          cerrarModalFotoEscalon(); 
+          cargarDatosPrincipales(); 
+        }); 
+      }
+
+      function abrirEditor() { 
+        document.getElementById('mod-nombre').value = misDatosGlobales.nombre || "";
+        document.getElementById('mod-fecha-reg').value = misDatosGlobales.fechaReg || "";
+        document.getElementById('mod-peso').value = soloNumeros(misDatosGlobales.pesoInicial);
+        document.getElementById('mod-talla').value = soloNumeros(misDatosGlobales.talla);
+        document.getElementById('mod-fecha').value = misDatosGlobales.fechaNac || "";
+        document.getElementById('mod-peso-obj').value = soloNumeros(misDatosGlobales.pesoObjetivo);
+        document.getElementById('mod-avatar').value = misDatosGlobales.avatarUrl || "";
+        document.getElementById('onboarding-modal').style.display = 'flex'; 
+      }
+      function cerrarModal() { document.getElementById('onboarding-modal').style.display = 'none'; }
+      function guardarOnboarding() { 
+        var btn = document.querySelector('#onboarding-modal .btn-guardar');
+        btn.innerText = "⏳ Guardando..."; 
+        btn.disabled = true;
+        llamarBackend('saveWelcomeData', { 
+          nombre: document.getElementById('mod-nombre').value,
+          fechaReg: document.getElementById('mod-fecha-reg').value,
+          pesoIni: document.getElementById('mod-peso').value, 
+          talla: document.getElementById('mod-talla').value, 
+          fecha: document.getElementById('mod-fecha').value,
+          pesoObj: document.getElementById('mod-peso-obj').value,
+          avatarUrl: document.getElementById('mod-avatar').value
+        }, function() { 
+          btn.innerText = "Guardar";
+          btn.disabled = false;
+          cerrarModal(); 
+          cargarDatosPrincipales(); 
+        }); 
+      }
+
+      function abrirModalMesUniversal(numMes) { 
+        mesActivoEdicion = numMes; document.getElementById('tit-modal-mes').innerText = "Editar MES " + numMes;
+        var d = misDatosGlobales.meses[numMes - 1]; document.getElementById('mod-fecha-med').value = d.fechaMed; document.getElementById('mod-peso-colb').value = soloNumeros(d.pesoColB); document.getElementById('mod-dif-obj').value = soloNumeros(d.difObj); document.getElementById('mod-cuello').value = soloNumeros(d.med.cuello); document.getElementById('mod-hombro').value = soloNumeros(d.med.hombro); document.getElementById('mod-pecho').value = soloNumeros(d.med.pecho); document.getElementById('mod-cintura').value = soloNumeros(d.med.cintura); document.getElementById('mod-brazoI').value = soloNumeros(d.med.brazoI); document.getElementById('mod-brazoD').value = soloNumeros(d.med.brazoD); document.getElementById('mod-anteI').value = soloNumeros(d.med.anteI); document.getElementById('mod-anteD').value = soloNumeros(d.med.anteD); document.getElementById('mod-circAb').value = soloNumeros(d.med.circAb); document.getElementById('mod-musloI').value = soloNumeros(d.med.musloI); document.getElementById('mod-musloD').value = soloNumeros(d.med.musloD); document.getElementById('mod-pantI').value = soloNumeros(d.med.pantI); document.getElementById('mod-pantD').value = soloNumeros(d.med.pantD); document.getElementById('mod-cadera').value = soloNumeros(d.med.cadera);
+        
+        document.getElementById('mod-foto-frente').value = (d.fotos.frente === "https://i.postimg.cc/dVdHKRY5/FRENTE.jpg") ? "" : (d.fotos.frente || ""); 
+        document.getElementById('mod-foto-espalda').value = (d.fotos.espalda === "https://i.postimg.cc/7ZY3KgL7/ESPALDA.jpg") ? "" : (d.fotos.espalda || ""); 
+        document.getElementById('mod-foto-pder').value = (d.fotos.perfilDer === "https://i.postimg.cc/CKRjgSkk/PERFIL-DERECHO.jpg") ? "" : (d.fotos.perfilDer || ""); 
+        document.getElementById('mod-foto-pizq').value = (d.fotos.perfilIzq === "https://i.postimg.cc/RhLtRF5D/PERFIL-IZQUIERDO.jpg") ? "" : (d.fotos.perfilIzq || ""); 
+        
+        document.getElementById('modal-mes-universal').style.display = 'flex'; 
+      }
+      function cerrarModalMesUniversal() { document.getElementById('modal-mes-universal').style.display = 'none'; }
+      function guardarMedidasMesUniversal() { 
+        var btn = document.getElementById('btn-save-mes-universal'); 
+        btn.innerText = "⏳ Guardando..."; 
+        btn.disabled = true;
+        var datos = { mes: mesActivoEdicion, fechaMed: document.getElementById('mod-fecha-med').value, pesoColB: document.getElementById('mod-peso-colb').value, difObj: document.getElementById('mod-dif-obj').value, cuello: document.getElementById('mod-cuello').value, hombro: document.getElementById('mod-hombro').value, pecho: document.getElementById('mod-pecho').value, cintura: document.getElementById('mod-cintura').value, brazoI: document.getElementById('mod-brazoI').value, brazoD: document.getElementById('mod-brazoD').value, anteI: document.getElementById('mod-anteI').value, anteD: document.getElementById('mod-anteD').value, circAb: document.getElementById('mod-circAb').value, musloI: document.getElementById('mod-musloI').value, musloD: document.getElementById('mod-musloD').value, pantI: document.getElementById('mod-pantI').value, pantD: document.getElementById('mod-pantD').value, cadera: document.getElementById('mod-cadera').value, fotoFrente: document.getElementById('mod-foto-frente').value, fotoEspalda: document.getElementById('mod-foto-espalda').value, fotoPerfilDer: document.getElementById('mod-foto-pder').value, fotoPerfilIzq: document.getElementById('mod-foto-pizq').value }; 
+        llamarBackend('saveMedidasMesUniversal', datos, function() { 
+          btn.innerText = "💾 Guardar Mes"; 
+          btn.disabled = false;
+          cerrarModalMesUniversal(); 
+          cargarDatosPrincipales(); 
+        }); 
+      }
+
+      function abrirModalDiario(fila, fecha, peso, energia, caminata, agua, presion, notas) { 
+        diaActivoEdicion = fila; 
+        document.getElementById('tit-diario-fecha').innerText = fecha; 
+        document.getElementById('mod-diario-peso').value = soloNumeros(peso); 
+        document.getElementById('mod-diario-energia').value = energia || ""; 
+        document.getElementById('mod-diario-caminata').value = caminata || ""; 
+        document.getElementById('mod-diario-agua').value = agua || ""; 
+        document.getElementById('mod-diario-presion').value = presion || ""; 
+        document.getElementById('mod-diario-notas').value = notas || ""; 
+        document.getElementById('modal-diario').style.display = 'flex'; 
+      }
+      function cerrarModalDiario() { document.getElementById('modal-diario').style.display = 'none'; }
+      function guardarDiaDiario() { 
+        var btn = document.getElementById('btn-save-diario'); 
+        btn.innerText = "⏳ Guardando..."; 
+        btn.disabled = true;
+        var datos = { 
+          fila: diaActivoEdicion, 
+          peso: document.getElementById('mod-diario-peso').value, 
+          energia: document.getElementById('mod-diario-energia').value, 
+          caminata: document.getElementById('mod-diario-caminata').value, 
+          agua: document.getElementById('mod-diario-agua').value, 
+          presion: document.getElementById('mod-diario-presion').value, 
+          notas: document.getElementById('mod-diario-notas').value 
+        }; 
+        llamarBackend('saveDiaDiario', datos, function() { 
+          btn.innerText = "💾 Guardar Día"; 
+          btn.disabled = false;
+          cerrarModalDiario(); 
+          cargarDatosPrincipales(); 
+        }); 
+      }
+
+      function abrirModalFotosCalc() { 
+        if (!misDatosGlobales.isSuperAdmin) return;
+        document.getElementById('mod-calc-img1').value = misDatosGlobales.calcFotos.img1 || ""; 
+        document.getElementById('mod-calc-img2').value = misDatosGlobales.calcFotos.img2 || ""; 
+        document.getElementById('mod-calc-img3').value = misDatosGlobales.calcFotos.img3 || ""; 
+        document.getElementById('mod-calc-img4').value = misDatosGlobales.calcFotos.img4 || ""; 
+        document.getElementById('mod-calc-img5').value = misDatosGlobales.calcFotos.img5 || ""; 
+        document.getElementById('modal-fotos-calc').style.display = 'flex'; 
+      }
+      function cerrarModalFotosCalc() { document.getElementById('modal-fotos-calc').style.display = 'none'; }
+      function guardarFotosCalc() { 
+        var btn = document.getElementById('btn-save-calc-fotos'); btn.innerText = "⏳ Guardando..."; 
+        var d = { 
+          img1: document.getElementById('mod-calc-img1').value, 
+          img2: document.getElementById('mod-calc-img2').value, 
+          img3: document.getElementById('mod-calc-img3').value,
+          img4: document.getElementById('mod-calc-img4').value,
+          img5: document.getElementById('mod-calc-img5').value
+        }; 
+        llamarBackend('guardarFotosCalculadora', d, function() { btn.innerText = "💾 Guardar Fotos"; cerrarModalFotosCalc(); cargarDatosPrincipales(); }); 
+      }
+
+      function abrirModalReceta(index) {
+        if (!misDatosGlobales.isSuperAdmin) return;
+
+        if (index !== null && index !== undefined) {
+          var r = todasLasRecetas[index];
+          document.getElementById('tit-modal-receta').innerText = "Editar Receta";
+          document.getElementById('mod-receta-fila').value = r.fila;
+          document.getElementById('mod-receta-nombre').value = r.nombre;
+          document.getElementById('mod-receta-cat').value = r.categoria || "DESAYUNO";
+          document.getElementById('mod-receta-cal').value = r.calorias;
+          document.getElementById('mod-receta-ing').value = r.ingredientes;
+          document.getElementById('mod-receta-prep').value = r.preparacion;
+          document.getElementById('mod-receta-foto').value = r.fotoRaw || ""; 
+        } else {
+          document.getElementById('tit-modal-receta').innerText = "Nueva Receta";
+          document.getElementById('mod-receta-fila').value = ""; 
+          document.getElementById('mod-receta-nombre').value = "";
+          document.getElementById('mod-receta-cat').value = "DESAYUNO";
+          document.getElementById('mod-receta-cal').value = "";
+          document.getElementById('mod-receta-ing').value = "";
+          document.getElementById('mod-receta-prep').value = "";
+          document.getElementById('mod-receta-foto').value = "";
+        }
+        document.getElementById('modal-receta').style.display = 'flex';
+      }
+      
+      function cerrarModalReceta() { document.getElementById('modal-receta').style.display = 'none'; }
+      
+      function guardarReceta() {
+        var btn = document.getElementById('btn-save-receta');
+        btn.innerText = "⏳ Guardando...";
+        btn.disabled = true;
+        var datos = {
+          fila: document.getElementById('mod-receta-fila').value,
+          nombre: document.getElementById('mod-receta-nombre').value,
+          categoria: document.getElementById('mod-receta-cat').value,
+          calorias: document.getElementById('mod-receta-cal').value,
+          ingredientes: document.getElementById('mod-receta-ing').value,
+          preparacion: document.getElementById('mod-receta-prep').value,
+          foto: document.getElementById('mod-receta-foto').value
+        };
+        llamarBackend('saveRecetaBackend', datos, function() {
+          btn.innerText = "💾 Guardar Receta";
+          btn.disabled = false;
+          cerrarModalReceta();
+          cargarDatosPrincipales();
+        });
+      }
+
+      function cambiarIconoApp() {
+        var nuevaUrl = prompt("Pega el enlace de Google Drive para el nuevo ícono global de la app:");
+        if (nuevaUrl) {
+          llamarBackend('actualizarIconoApp', { url: nuevaUrl }, function() {
+            cargarDatosPrincipales();
+          });
+        }
+      }
+
+      // ==========================================
+      // FUNCIONES DE FINANZAS
+      // ==========================================
+
+      function cargarPanelFinanzas() {
+        llamarBackend('getFinanzasData', {}, function(res) {
+          datosFinanzasGlobal = res;
+          
+          // Llenar Alertas
+          var htmlAlertas = "";
+          for(var a=0; a<res.alertas.length; a++) {
+            var colorEstado = res.alertas[a].estado === "VENCIDO" ? "#FF0000" : "#FFA500";
+            htmlAlertas += '<tr><td style="color:#FFF; font-weight:bold;">'+res.alertas[a].nombre+'</td><td style="color:#00BFFF;">'+res.alertas[a].fecha+'</td><td style="color:'+colorEstado+'; font-weight:bold;">'+res.alertas[a].estado+'</td></tr>';
+          }
+          if(htmlAlertas === "") htmlAlertas = '<tr><td colspan="3" style="text-align:center; color:#00FF7F;">✅ Todos los clientes están al día</td></tr>';
+          document.getElementById('tabla-alertas-finanzas').innerHTML = htmlAlertas;
+
+          // Cargar lista de clientes inicial
+          filtrarClientesFinanzas();
+        });
+      }
+
+      function filtrarClientesFinanzas() {
+        if (!datosFinanzasGlobal) return;
+        var input = document.getElementById("fin-buscador").value.toLowerCase();
+        var select = document.getElementById('fin-uid');
+        var selectVal = select.value;
+        
+        select.innerHTML = '<option value="">-- Selecciona un Cliente --</option>';
+        for(var u=0; u<datosFinanzasGlobal.usuarios.length; u++) {
+          var usr = datosFinanzasGlobal.usuarios[u];
+          var nombre = usr.nombre.toLowerCase();
+          
+          if(nombre.includes(input) || input === "") {
+            var isSelected = (usr.uid === selectVal) ? "selected" : "";
+            select.innerHTML += '<option value="'+usr.uid+'" '+isSelected+'>'+usr.nombre+' (Próx. pago: '+usr.proximo+')</option>';
+          }
+        }
+        
+        // Si hay un usuario seleccionado, cargamos su historial automáticamente tras filtrar
+        if(selectVal) {
+           cargarHistorialUsuario();
+        }
+      }
+
+      function cargarHistorialUsuario() {
+        var uid = document.getElementById('fin-uid').value;
+        if(!uid || !datosFinanzasGlobal) return;
+
+        // Auto-rellenar config del usuario
+        var usr = datosFinanzasGlobal.usuarios.find(u => u.uid === uid);
+        if(usr) {
+          document.getElementById('fin-base').value = usr.base;
+          document.getElementById('fin-plan').value = usr.plan;
+        }
+
+        // Filtrar pagos de este usuario para la tabla Admin con Edición y Eliminado
+        var html = "";
+        for(var p=0; p<datosFinanzasGlobal.pagos.length; p++) {
+          var pago = datosFinanzasGlobal.pagos[p];
+          if(pago.uid === uid) {
+            
+            var fPagoRaw = pago.fechaPago || "";
+            var fPagoDisplay = fPagoRaw.substring(0,10);
+            
+            // Re-formatear fecha (YYYY-MM-DD) para el input type="date" del Modal
+            var fPagoISO = "";
+            var soloFecha = fPagoRaw.split(' ')[0];
+            if (soloFecha.includes('/')) {
+                var fp = soloFecha.split('/');
+                if(fp.length === 3 && fp[2].length === 4) {
+                   fPagoISO = fp[2] + '-' + fp[1].padStart(2, '0') + '-' + fp[0].padStart(2, '0');
+                }
+            } else if (soloFecha.includes('-')) {
+                fPagoISO = soloFecha; 
+            }
+
+            var link = pago.recibo ? '<a href="'+pago.recibo+'" target="_blank" style="color:#00FF7F;">Ver</a>' : '--';
+            
+            // Botones de Acciones
+            var btnEdit = '<button class="btn-editar" style="font-size:15px; margin:0; padding:2px 5px;" onclick="abrirModalEditarPago('+pago.fila+', \''+fPagoISO+'\', \''+pago.mes+'\', \''+pago.anio+'\', \''+pago.plan+'\', \''+pago.metodo+'\', \''+(pago.costo||'')+'\', \''+(pago.recibo||'')+'\')" title="Editar">✏️</button>';
+            var btnDel = '<button class="btn-editar" style="font-size:15px; margin:0; padding:2px 5px; color:#FF0000;" onclick="borrarPago('+pago.fila+')" title="Eliminar">🗑️</button>';
+
+            html += '<tr>' + 
+                    '<td>'+fPagoDisplay+'</td>' + 
+                    '<td style="color:#00BFFF;">'+pago.mes+' '+pago.anio+'</td>' + 
+                    '<td>'+pago.plan+'</td>' + 
+                    '<td>'+pago.metodo+'</td>' + 
+                    '<td style="color:#FFD700; font-weight:bold;">'+(pago.costo ? '$'+pago.costo : '--')+'</td>' + 
+                    '<td>'+link+'</td>' + 
+                    '<td>'+btnEdit+' '+btnDel+'</td>' + 
+                    '</tr>';
+          }
+        }
+        if(html === "") html = '<tr><td colspan="7" style="text-align:center;">Sin pagos registrados.</td></tr>';
+        document.getElementById('tabla-historial-finanzas').innerHTML = html;
+      }
+
+      function guardarPago() {
+        var sel = document.getElementById('fin-uid');
+        if(!sel.value) return alert("Selecciona un cliente");
+        if(!document.getElementById('fin-base').value) return alert("Asigna la Fecha Base (Primera Medición) para sincronizar los pagos");
+
+        var btn = document.getElementById('btn-save-pago');
+        btn.innerText = "⏳ Sincronizando..."; btn.disabled = true;
+
+        var datos = {
+          uid: sel.value,
+          nombre: sel.options[sel.selectedIndex].text.split(' (')[0],
+          fechaBase: document.getElementById('fin-base').value,
+          plan: document.getElementById('fin-plan').value,
+          mes: document.getElementById('fin-mes').value,
+          anio: document.getElementById('fin-anio').value,
+          metodo: document.getElementById('fin-metodo').value,
+          comprobante: document.getElementById('fin-comprobante').value,
+          costo: document.getElementById('fin-costo').value // Envía el costo actual que se guardará en la fila permanentemente
+        };
+
+        llamarBackend('registrarPago', datos, function(res) {
+          btn.innerText = "💾 Registrar Pago y Sincronizar Mes"; btn.disabled = false;
+          document.getElementById('fin-comprobante').value = "";
+          document.getElementById('fin-costo').value = ""; // Limpiamos el valor para evitar duplicarlo sin querer
+          cargarPanelFinanzas(); 
+          alert(res);
+        });
+      }
+
+      // ----------------------------------------------------
+      // FUNCIONES DE EDICIÓN Y BORRADO DE PAGOS (SOLO ADMIN)
+      // ----------------------------------------------------
+
+      function borrarPago(fila) {
+        if(confirm("⚠ PRECAUCIÓN: ¿Estás seguro de que deseas ELIMINAR este registro de pago? Esta acción no se puede deshacer.")) {
+           llamarBackend('eliminarPago', { fila: fila }, function(res) {
+               alert(res);
+               cargarPanelFinanzas();
+           });
+        }
+      }
+
+      function abrirModalEditarPago(fila, fecha, mes, anio, plan, metodo, costo, recibo) {
+        document.getElementById('edit-pago-fila').value = fila;
+        document.getElementById('edit-pago-fecha').value = fecha;
+        document.getElementById('edit-pago-mes').value = mes;
+        document.getElementById('edit-pago-anio').value = anio;
+        document.getElementById('edit-pago-plan').value = plan;
+        document.getElementById('edit-pago-metodo').value = metodo;
+        document.getElementById('edit-pago-costo').value = costo;
+        document.getElementById('edit-pago-recibo').value = recibo;
+        document.getElementById('modal-editar-pago').style.display = 'flex';
+      }
+
+      function cerrarModalEditarPago() {
+        document.getElementById('modal-editar-pago').style.display = 'none';
+      }
+
+      function guardarEdicionPago() {
+        var btn = document.getElementById('btn-save-edit-pago');
+        btn.innerText = "⏳ Guardando..."; btn.disabled = true;
+        
+        var datos = {
+          fila: document.getElementById('edit-pago-fila').value,
+          fechaPago: document.getElementById('edit-pago-fecha').value,
+          mes: document.getElementById('edit-pago-mes').value,
+          anio: document.getElementById('edit-pago-anio').value,
+          plan: document.getElementById('edit-pago-plan').value,
+          metodo: document.getElementById('edit-pago-metodo').value,
+          costo: document.getElementById('edit-pago-costo').value,
+          recibo: document.getElementById('edit-pago-recibo').value
+        };
+
+        llamarBackend('editarPagoBackend', datos, function(res) {
+          btn.innerText = "💾 Guardar Cambios"; btn.disabled = false;
+          cerrarModalEditarPago();
+          cargarPanelFinanzas();
+          alert(res);
+        });
+      }
+    </script>
+  </body>
+</html>
